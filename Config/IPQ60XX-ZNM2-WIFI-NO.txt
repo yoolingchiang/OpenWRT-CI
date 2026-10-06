@@ -1,0 +1,71 @@
+#设备平台
+CONFIG_TARGET_qualcommax=y
+CONFIG_TARGET_qualcommax_ipq60xx=y
+
+#设备列表（仅兆能 ZN-M2：IPQ6000 / 512MB RAM / 128MB NAND / 无WiFi）
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_zn_m2=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_qihoo_360v6=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_anysafe_e1=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_cmiot_ax18=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_dptech_ap3000-2c=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_glinet_gl-ax1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_glinet_gl-axt1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-cs-02=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-cs-07=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_link_nn6000-v1=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_link_nn6000-v2=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_linksys_mr7350=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_linksys_mr7500=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_philips_ly1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_redmi_ax5=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_redmi_ax5-jdcloud=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_sy_y6010=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_xiaomi_ax1800=n
+
+#WIFI驱动（M2 无WiFi模组，全部关闭，可省下几十MB NAND 空间）
+CONFIG_PACKAGE_kmod-ath=n
+CONFIG_PACKAGE_kmod-ath11k=n
+CONFIG_PACKAGE_kmod-ath11k-ahb=n
+CONFIG_PACKAGE_kmod-ath11k-pci=n
+CONFIG_PACKAGE_ath11k-firmware-ipq6018=n
+CONFIG_PACKAGE_ath11k-firmware-ipq6018-ddwrt=n
+CONFIG_PACKAGE_ath11k-firmware-qcn9074=n
+CONFIG_PACKAGE_ath11k-firmware-qcn9074-ddwrt=n
+
+#Docker：512MB 内存 + 128MB NAND 跑不动，全部关闭
+CONFIG_PACKAGE_docker=n
+CONFIG_PACKAGE_dockerd=n
+CONFIG_PACKAGE_docker-compose=n
+CONFIG_PACKAGE_luci-app-dockerman=n
+CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=n
+CONFIG_PACKAGE_containerd=n
+CONFIG_PACKAGE_tini=n
+
+#插件清单（同时也是 Scripts/Packages.sh 按需拉包的判断依据）
+#说明：Packages.sh 会读取本文件与 GENERAL.txt，只有这里出现的包才会去 clone 第三方源，
+#      没出现的整段跳过 —— 既能缩短编译时间，也避免某个上游仓库挂掉导致整构建失败。
+#科学上网（M2 内存小，只留轻量的 nikki，不上 passwall/openclash）
+CONFIG_PACKAGE_luci-app-nikki=y
+CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
+#常用工具
+CONFIG_PACKAGE_luci-app-ddns-go=y
+CONFIG_PACKAGE_luci-app-upnp=y
+CONFIG_PACKAGE_luci-app-tailscale=y
+CONFIG_PACKAGE_luci-app-netspeedtest=y
+
+#兆能M2 定位：无WiFi 纯路由 / USB 网卡 WAN（CPE）
+#USB 网卡驱动与 usbwan 引擎见 Config/GENERAL.txt 与 Scripts/USB-WAN.sh，此处无需重复
+
+#内存档位：512MB 机型使用 ath11k 省内存档（本配置已关闭 WiFi，仅作保险项保留）
+CONFIG_ATH11K_MEM_PROFILE_512M=y
+
+# ---------- IPQ 专属调参（由 Scripts/Settings.sh 读取，行首 "# @" 是标记） ----------
+# NSS q6_region 内存预留：ipq6018-512m.dtsi 默认给 NSS 预留 55MB。
+# M2 无 WiFi，NSS 用不了那么多，砍到 32MB 能多留 ~23MB 给系统。
+# 可选：0x01000000=16MB / 0x02000000=32MB / 0x04000000=64MB / 0x06000000=96MB
+# 想恢复默认就把下面这行注释掉。
+# @WRT_Q6_REGION=0x02000000
+
+# 1.5GHz 频率档电压：默认 0.9375V。若出现不稳定或高温降频，可提到 0.95V，
+# 有需要就加一行（去掉引号）：# @WRT_CPU_UV=950000

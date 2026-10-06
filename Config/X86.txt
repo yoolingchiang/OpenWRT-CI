@@ -1,0 +1,32 @@
+#设备平台
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+#设备列表
+CONFIG_TARGET_ALL_PROFILES=y
+#WIFI驱动
+CONFIG_PACKAGE_kmod-mt7915e=y
+CONFIG_PACKAGE_kmod-mt7921e=y
+CONFIG_PACKAGE_kmod-mt7925e=y
+CONFIG_PACKAGE_kmod-mt7921-common=y
+CONFIG_PACKAGE_kmod-mt792x-common=y
+CONFIG_PACKAGE_kmod-mt7915-firmware=y
+CONFIG_PACKAGE_kmod-mt7916-firmware=y
+CONFIG_PACKAGE_kmod-mt7921-firmware=y
+CONFIG_PACKAGE_kmod-mt7922-firmware=y
+CONFIG_PACKAGE_kmod-mt7925-firmware=y
+CONFIG_PACKAGE_wpad-openssl=y
+#组件调整
+CONFIG_GRUB_IMAGES=y
+CONFIG_VMDK_IMAGES=y
+CONFIG_TARGET_KERNEL_PARTSIZE=128
+CONFIG_TARGET_ROOTFS_PARTSIZE=1024
+CONFIG_TARGET_ROOTFS_EXT4FS=n
+#内核模块调整
+CONFIG_PACKAGE_kmod-hwmon-w83627ehf=y
+CONFIG_PACKAGE_kmod-hwmon-w83627hf=y
+CONFIG_PACKAGE_kmod-w83627hf-wdt=y
+#插件调整
+#luci-app-dockerman 已删除：该包只存在于 kenzok8 源，而 WRT-CORE 里明确
+#rm -rf 掉了 feeds/smpackage/luci-app-dockerman，Packages.sh 也不再拉取它。
+#留着这行只会让 defconfig 静默丢弃，看起来像装上了其实没有，反而误导。
+#（上游 VIKINGYFY 的 X86.txt 同样没有这行）

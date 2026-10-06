@@ -1,0 +1,74 @@
+#设备平台
+CONFIG_TARGET_qualcommax=y
+CONFIG_TARGET_qualcommax_ipq60xx=y
+#设备列表(仅JDCloud RE-SS-01,硬改1G内存)
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y
+# 关闭其他设备,只编译RE-SS-01
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_qihoo_360v6=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_anysafe_e1=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_cmiot_ax18=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_dptech_ap3000-2c=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_glinet_gl-ax1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_glinet_gl-axt1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-cs-02=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_link_nn6000-v1=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_link_nn6000-v2=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_linksys_mr7350=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_linksys_mr7500=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_philips_ly1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_redmi_ax5=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_redmi_ax5-jdcloud=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_sy_y6010=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_xiaomi_ax1800=n
+CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_zn_m2=n
+
+#Docker支持
+CONFIG_PACKAGE_docker=y
+CONFIG_PACKAGE_dockerd=y
+CONFIG_PACKAGE_docker-compose=y
+CONFIG_PACKAGE_luci-app-dockerman=y
+CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=y
+# Docker daemon 内核支持(cgroup v1)
+CONFIG_DOCKER_CGROUP_OPTIONS=y
+# Docker 可选内核特性
+CONFIG_DOCKER_OPTIONAL_FEATURES=y
+
+#Docker需要的内核cgroup配置
+CONFIG_KERNEL_ARM_PMU=y
+CONFIG_KERNEL_CFQ_GROUP_IOSCHED=y
+CONFIG_KERNEL_CGROUP_DEVICE=y
+CONFIG_KERNEL_CGROUP_FREEZER=y
+CONFIG_KERNEL_CGROUP_HUGETLB=y
+CONFIG_KERNEL_CGROUP_NET_PRIO=y
+CONFIG_KERNEL_CGROUP_PERF=y
+CONFIG_KERNEL_HUGETLBFS=y
+CONFIG_KERNEL_HUGETLB_PAGE=y
+CONFIG_KERNEL_MEMCG_SWAP_ENABLED=y
+CONFIG_KERNEL_NET_CLS_CGROUP=y
+CONFIG_KERNEL_PERF_EVENTS=y
+
+#Docker网络所需模块
+CONFIG_PACKAGE_kmod-br-netfilter=y
+CONFIG_PACKAGE_kmod-ipt-nat6=y
+CONFIG_PACKAGE_kmod-nf-conntrack-netlink=y
+CONFIG_PACKAGE_kmod-tun=y
+CONFIG_PACKAGE_kmod-veth=y
+
+#插件清单（同时也是 Scripts/Packages.sh 按需拉包的判断依据）
+#说明：Packages.sh 读取本文件 + GENERAL.txt，只有列出的包才会去 clone 第三方源。
+#      亚瑟硬改 1G + 64G eMMC，可以放开装；M2 的配置见 IPQ60XX-ZNM2.txt（精简很多）。
+#科学上网
+CONFIG_PACKAGE_luci-app-passwall2=y
+CONFIG_PACKAGE_luci-app-openclash=y
+CONFIG_PACKAGE_luci-app-nikki=y
+CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
+CONFIG_PACKAGE_luci-app-mosdns=y
+#常用工具
+CONFIG_PACKAGE_luci-app-ddns-go=y
+CONFIG_PACKAGE_luci-app-diskman=y
+CONFIG_PACKAGE_luci-app-netwizard=y
+CONFIG_PACKAGE_luci-app-netspeedtest=y
+CONFIG_PACKAGE_luci-app-openlist2=y
+CONFIG_PACKAGE_luci-app-tailscale=y
+CONFIG_PACKAGE_luci-app-easytier=y
+CONFIG_PACKAGE_luci-app-timecontrol=y
