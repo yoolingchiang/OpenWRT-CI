@@ -188,6 +188,8 @@ fi
 | `WRT-CORE` 里 `WRT_WIFI` 初值被 krisxu23 写死成 `wifi-yes`，且删掉了上游的重算逻辑 | 初值还原 `none`，由 `Settings.sh` 按机型名给出确定值 |
 | `WRT_TEST` 传参缺 `|| false` 兜底（`workflow_run` 触发时 inputs 为空） | 五条调用工作流统一改回 `${{inputs.TEST \|\| false}}` |
 
+| `IPQ60XX-ZNM2-WIFI-NO` 里给 M2 加了 `# @WRT_Q6_REGION=0x02000000`（想把 NSS 预留砍到 32MB） | **删除**。核对源码后发现 `ipq6018-nowifi.dtsi` 里 `q6_region` 本身就是 `0x1000000`（16MB），再设 32MB 是反向优化，白扔 16MB 内存 |
+
 另外，**上游自己有两处不一致**：`QCB-ALL` / `OWRT-ALL` 的矩阵引用
 `IPQ53XX-WIFI-NO`、`IPQ95XX-WIFI-YES`、`AIROHA-WIFI-NO`，
 但上游 Config 目录里叫 `IPQ53XX.txt`、`IPQ95XX.txt`、`AIROHA.txt`
@@ -201,5 +203,13 @@ fi
   `Settings.sh` 靠这个判断把 `ipq6018.dtsi` 换成 `ipq6018-nowifi.dtsi`，
   给 NSS 少预留一大块内存 —— 512MB 的 M2 很吃这一点。
   除了改名字，机型配置里 `CONFIG_PACKAGE_kmod-ath*=n` 几行也要带上，两者缺一不可。
+- **nowifi 链路已对源码核过**（`VIKINGYFY/immortalwrt` @ main）：
+  - `ipq6018-nowifi.dtsi` / `ipq8074-nowifi.dtsi` 不在 `target/linux/qualcommax/dts/` 下，
+    而在 `target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/`，会被拷进内核 dts 目录 —— 所以替换后能正常 `#include`。
+  - M2 的链路是 `ipq6000-m2.dts` → `ipq6000-cmiot.dtsi` → `ipq6018.dtsi`，
+    `Settings.sh` 改的是中间的 `ipq6000-cmiot.dtsi`，命中。
+  - nowifi 变体把 `q6_region` 设为 16MB（base 是 85MB），**不要再手动调大**。
+  - 亚瑟的 `ipq6000-re-ss-01.dts` 第 181 行确实是 `qcom,ath11k-fw-memory-mode = <1>`，
+    `Settings.sh` 改 `<1>` → `<0>`（完整内存模式，适配硬改 1G）能命中。
 - `third-party-sources.txt` 是构建产物，已在 `.gitignore` 里，不要提交。
 - 私有配置放 `Config/PRIVATE.txt` 或 `Scripts/PRIVATE.sh`，会被自动加载且已忽略。
