@@ -1,0 +1,17 @@
+#本仓库所有内容都是文本，统一按 LF 入库 / 出库。
+#目的：Actions 跑在 Linux 上，任何带 CRLF 的 .sh 都会报
+#  /bin/bash^M: bad interpreter
+#整个编译直接崩，而且报错很难定位。这里强制 LF，
+#即使本机 core.autocrlf=true、或有人用记事本改过，也不会把 CRLF 带进仓库。
+
+#兜底：全部文本文件按 LF
+* text=auto eol=lf
+
+#显式列出关键类型（同上，写出来是为了让意图更明显）
+*.txt text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+LICENSE text eol=lf
+/.gitattributes text eol=lf
