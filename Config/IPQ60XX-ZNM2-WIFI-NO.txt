@@ -61,11 +61,14 @@ CONFIG_PACKAGE_luci-app-netspeedtest=y
 CONFIG_ATH11K_MEM_PROFILE_512M=y
 
 # ---------- IPQ 专属调参（由 Scripts/Settings.sh 读取，行首 "# @" 是标记） ----------
-# NSS q6_region 内存预留：ipq6018-512m.dtsi 默认给 NSS 预留 55MB。
-# M2 无 WiFi，NSS 用不了那么多，砍到 32MB 能多留 ~23MB 给系统。
-# 可选：0x01000000=16MB / 0x02000000=32MB / 0x04000000=64MB / 0x06000000=96MB
-# 想恢复默认就把下面这行注释掉。
-# @WRT_Q6_REGION=0x02000000
+# NSS q6_region 内存预留：这一项保持关闭，不要再手动调。
+# 原因：本配置名带 WIFI-NO，Settings.sh 已把 DTS 切到 ipq6018-nowifi.dtsi，
+#       而 nowifi 变体里 q6_region 本身就是 0x1000000（16MB），
+#       比 base ipq6018.dtsi 的 85MB 省 ~69MB，比 512m 变体的 55MB 也还省 39MB。
+#       nowifi 变体本来就是给无 WiFi 机型准备的，再手动设 32MB 反而是反向优化。
+# 只有出现 NSS 报内存不足时才需要调大，标记名为 WRT_Q6_REGION，
+# 取值 0x01000000=16MB / 0x02000000=32MB / 0x04000000=64MB / 0x06000000=96MB
+# （写法是单独一行，行首 "# @"，这里故意不写出完整标记，避免误生效）
 
 # 1.5GHz 频率档电压：默认 0.9375V。若出现不稳定或高温降频，可提到 0.95V，
-# 有需要就加一行（去掉引号）：# @WRT_CPU_UV=950000
+# 标记名为 WRT_CPU_UV，取值单位是微伏（950000 = 0.95V）
