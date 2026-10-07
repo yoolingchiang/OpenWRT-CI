@@ -117,8 +117,33 @@ Scripts/
   Handles.sh      修 feeds、改 tailscale/rust、调用 USB-WAN.sh 注入 files/
   Settings.sh     改 IP、主机名、主题、SSID；无 WiFi 切 nowifi.dtsi；IPQ 调参
   USB-WAN.sh      USB 网卡自动 WAN（CPE）
+  DepCheck.sh     依赖预检（defconfig 之后跑，见下）
 USB-WAN.md        USB-WAN 用法与排障
 ```
+
+---
+
+## 依赖预检（`Scripts/DepCheck.sh`）
+
+在 `make defconfig` 之后自动跑一次，**几秒钟**，用来提前发现这类问题：
+
+```
+ERROR: unable to select packages: v2ray-geoip (no such package): required by: luci-app-passwall2
+```
+
+源码已迁移到 **apk** 包管理器，`.config` 里写了源中不存在（或已被改名）的依赖时，
+`make defconfig` **不会报任何错** —— 要等 1.5~3 小时把几百个包全部编完之后，
+在 `package/install` 阶段才炸，整次编译白跑，而且失败还会导致编译缓存不保存。
+
+预检会读出 `tmp/.packageinfo`（`scripts/package-metadata.pl` 生成，含 `LUCI_DEPENDS`），
+逐个比对选中包的依赖是否存在，缺失项以 `::error::` 注解输出，直接显示在运行的
+**Annotations** 区和 job 摘要里，不用翻长日志。
+
+- **只告警，永远 `exit 0`**，不会因为预检失败而中断编译。
+- **WRT-TEST 也会跑它**，所以想验证新插件能不能编，跑一次 WRT-TEST 就够，不用等完整编译。
+- 已知会被它抓到的典型情况：`luci-app-tailscale`（源里无 `tailscale`）、
+  `luci-app-passwall2` / `luci-app-mosdns`（`v2ray-geoip`、`v2ray-geosite`
+  已被生态改名合并为 `v2ray-geodata`）。
 
 ---
 
