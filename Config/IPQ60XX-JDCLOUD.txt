@@ -67,8 +67,16 @@ CONFIG_PACKAGE_luci-app-mosdns=y
 CONFIG_PACKAGE_luci-app-ddns-go=y
 CONFIG_PACKAGE_luci-app-diskman=y
 CONFIG_PACKAGE_luci-app-netwizard=y
-CONFIG_PACKAGE_luci-app-netspeedtest=y
+#⚠ 已停用：luci-app-netspeedtest 依赖 python3-email 与 python3-pkg-resources，
+#   这两个包在当前源（VIKINGYFY/immortalwrt）的 apk 索引里不存在。
+#   源码已迁移到 apk 包管理器，缺依赖不再是警告 —— 会在 package/install 阶段
+#   直接报 "ERROR: unable to select packages" 并中断整次编译（2026-10-07 实测）。
+#   等源里补上这两个 python3 子包后再启用。
+#CONFIG_PACKAGE_luci-app-netspeedtest=y
+CONFIG_PACKAGE_luci-app-netspeedtest=n
 CONFIG_PACKAGE_luci-app-openlist2=y
-CONFIG_PACKAGE_luci-app-tailscale=y
+#⚠ 已停用：luci-app-tailscale 依赖的 tailscale 主程序包在当前源里不存在，同上会中断编译。
+#CONFIG_PACKAGE_luci-app-tailscale=y
+CONFIG_PACKAGE_luci-app-tailscale=n
 CONFIG_PACKAGE_luci-app-easytier=y
 CONFIG_PACKAGE_luci-app-timecontrol=y
