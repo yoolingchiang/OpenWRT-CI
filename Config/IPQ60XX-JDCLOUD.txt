@@ -58,11 +58,22 @@ CONFIG_PACKAGE_kmod-veth=y
 #说明：Packages.sh 读取本文件 + GENERAL.txt，只有列出的包才会去 clone 第三方源。
 #      亚瑟硬改 1G + 64G eMMC，可以放开装；M2 的配置见 IPQ60XX-ZNM2-WIFI-NO.txt（精简很多）。
 #科学上网
-CONFIG_PACKAGE_luci-app-passwall2=y
+#⚠ 已停用：luci-app-passwall2 依赖 v2ray-geoip / v2ray-geosite / geoview / tcping。
+#   v2ray-geoip 与 v2ray-geosite 这两个包名已被整个生态改名合并为 v2ray-geodata
+#   （immortalwrt/packages 与 kenzok8/small-package 里旧名均已不存在，只剩 v2ray-geodata），
+#   但 passwall2 的 Makefile 还在按旧名声明依赖 → apk 在 package/install 阶段
+#   报 "unable to select packages ... no such package"，整次编译在最后一步中断。
+#   passwall v1 同样依赖这两个包（select PACKAGE_v2ray-geoip），换 v1 也救不了。
+#   想恢复：等 passwall 上游改用 v2ray-geodata 后再打开（需确认其 dat 文件路径也对齐）。
+#CONFIG_PACKAGE_luci-app-passwall2=y
+CONFIG_PACKAGE_luci-app-passwall2=n
 CONFIG_PACKAGE_luci-app-openclash=y
 CONFIG_PACKAGE_luci-app-nikki=y
 CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
-CONFIG_PACKAGE_luci-app-mosdns=y
+#⚠ 已停用：luci-app-mosdns 同样依赖 v2ray-geoip / v2ray-geosite，原因同上。
+#   替代：nikki / openclash 自带 DNS 分流，功能重叠，不需要单独挂 mosdns。
+#CONFIG_PACKAGE_luci-app-mosdns=y
+CONFIG_PACKAGE_luci-app-mosdns=n
 #常用工具
 CONFIG_PACKAGE_luci-app-ddns-go=y
 CONFIG_PACKAGE_luci-app-diskman=y
