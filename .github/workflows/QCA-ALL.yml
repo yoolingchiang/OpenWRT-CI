@@ -7,10 +7,17 @@ name: QCA-ALL
 #CI计划
 on:
   #自动编译：当Auto-Clean运行完成后
-  workflow_run:
-    workflows: ["Auto-Clean"]
-    types:
-      - completed
+  #⚠ 已用注释停用，不再删除，方便以后按需整段恢复。
+  #停用原因：Auto-Clean 一跑完就会把四条产品线一起拉起（共 9 个固件同时在编），
+  #   而它自己又会反过来把上一次的运行记录和 Release 删光，报错日志没法回溯。
+  #   只要 Auto-Clean 不自动跑，这条链路就不会被激活 —— 所以真正的开关在 Auto-Clean。
+  #   这里一并注释掉，是为了防止以后手动跑 Auto-Clean 时又被级联一次。
+  #日常用法：Actions → QCA-ALL → Run workflow，一次同时出亚瑟 + M2 两个固件。
+  #需要恢复：把下面四行行首的 # 去掉。
+  #workflow_run:
+  #  workflows: ["Auto-Clean"]
+  #  types:
+  #    - completed
   #手动编译
   workflow_dispatch:
     inputs:
