@@ -212,7 +212,16 @@ jobs:
 
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
-          make defconfig -j$(nproc) && make clean -j$(nproc)
+          make defconfig -j$(nproc)
+
+          #依赖预检：几秒钟扫一遍选中包的依赖，把 apk 阶段才会暴露的
+          #"unable to select packages ... no such package" 提前列出来。
+          #源码已迁移到 apk，缺依赖不再被 defconfig 拦下，而是要等 1.5~3 小时
+          #把几百个包全编完之后在 package/install 阶段才炸，代价太大。
+          #脚本只告警、永远 exit 0，不会阻断编译。详见 Scripts/DepCheck.sh。
+          bash $GITHUB_WORKSPACE/Scripts/DepCheck.sh
+
+          make clean -j$(nproc)
 
       - name: Download Packages
         if: ${{ !inputs.WRT_TEST }}
