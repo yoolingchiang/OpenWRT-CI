@@ -5,7 +5,11 @@
 #单台设备的取舍请改 Config/<设备>-Override.txt（追加在最后，优先级更高）。
 
 #科学插件调整
-CONFIG_PACKAGE_luci-app-homeproxy=y
+#homeproxy：不用。亚瑟走 nikki + openclash 双栈，M2 只用 nikki（见各机型配置的插件段）。
+#★这里必须写 =n，不能只在机型配置里减 —— 加载顺序是「机型配置 → GENERAL」，GENERAL 在后、
+#  会覆盖机型层（Packages.sh 注释里的「机型优先」只对它自己的 clone 判断成立，跟 .config
+#  的实际顺序相反）。只在机型层写 =n 压不住，homeproxy 照样进固件。
+CONFIG_PACKAGE_luci-app-homeproxy=n
 #增加插件
 CONFIG_PACKAGE_luci-app-autoreboot=y
 CONFIG_PACKAGE_luci-app-gecoosac=y
@@ -35,7 +39,10 @@ CONFIG_PACKAGE_kmod-ata-core=y
 CONFIG_PACKAGE_kmod-bonding=y
 CONFIG_PACKAGE_kmod-dsa=y
 CONFIG_PACKAGE_kmod-dummy=y
-CONFIG_PACKAGE_kmod-fs-btrfs=y
+#btrfs：亚瑟是 eMMC（ext4/f2fs）、M2 是 NAND（ubifs），都用不上，砍掉省 ~6MB
+#  （kmod + btrfs-progs）。想恢复：把下面两行改回 =y。
+CONFIG_PACKAGE_kmod-fs-btrfs=n
+CONFIG_PACKAGE_btrfs-progs=n
 CONFIG_PACKAGE_kmod-fs-ksmbd=y
 CONFIG_PACKAGE_kmod-fuse=y
 CONFIG_PACKAGE_kmod-inet-diag=y
@@ -74,7 +81,8 @@ CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
 CONFIG_PACKAGE_kmod-nft-xfrm=y
 CONFIG_PACKAGE_kmod-nvme=y
-CONFIG_PACKAGE_kmod-ovpn-backports=y
+#ovpn-backports：不跑 OpenVPN，砍掉。想恢复：改回 =y。
+CONFIG_PACKAGE_kmod-ovpn-backports=n
 CONFIG_PACKAGE_kmod-sound-core=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-usb3=y
@@ -82,20 +90,25 @@ CONFIG_PACKAGE_kmod-usb-audio=y
 CONFIG_PACKAGE_kmod-usb-core=y
 CONFIG_PACKAGE_kmod-usb-dwc3=y
 CONFIG_PACKAGE_kmod-usb-ehci=y
-CONFIG_PACKAGE_kmod-usb-net=y
-CONFIG_PACKAGE_kmod-usb-net-asix=y
-CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-eem=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-subset=y
-CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
-CONFIG_PACKAGE_kmod-usb-net-ipheth=y
-CONFIG_PACKAGE_kmod-usb-net-rndis=y
-CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
-CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
-CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y
+#USB 网卡驱动：不用（亚瑟与 M2 都不做 USB-WAN / USB 网卡共享），整组关闭省 ~3MB。
+#  4G/5G 模组（qmi-wwan / cdc-mbim / cdc-ncm）本来是给 USB-WAN 玩法准备的，该玩法暂不启用，
+#  需要时按 USB-WAN.md 的说明加回。
+#  保留的是 USB 存储（kmod-usb-storage*）与控制器（usb3/dwc3/ehci/ohci/uhci）：接 U 盘要用。
+#  想恢复：把下面这些行取消注释。
+#CONFIG_PACKAGE_kmod-usb-net=y
+#CONFIG_PACKAGE_kmod-usb-net-asix=y
+#CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
+#CONFIG_PACKAGE_kmod-usb-net-cdc-eem=y
+#CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
+#CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+#CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
+#CONFIG_PACKAGE_kmod-usb-net-cdc-subset=y
+#CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
+#CONFIG_PACKAGE_kmod-usb-net-ipheth=y
+#CONFIG_PACKAGE_kmod-usb-net-rndis=y
+#CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
+#CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
+#CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y
 CONFIG_PACKAGE_kmod-usb-ohci=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-storage-extras=y
@@ -109,6 +122,11 @@ CONFIG_PACKAGE_automount=y
 CONFIG_PACKAGE_blkid=y
 CONFIG_PACKAGE_cfdisk=y
 CONFIG_PACKAGE_cgdisk=y
+#coremark：这行目前是无效的 —— 它正好在「被 smpackage 同名顶掉」的 119 个包名单里：
+#  官方 packages feed 的 coremark 被 WRT-CORE.yml 的清理逻辑删掉，smpackage 版又因为
+#  feed 优先级（packages 在前）装不上，结果这个包从源码树里消失。dark 那份能装上
+#  是因为他没有这一步清理。真要跑分，得先在 WRT-CORE.yml 里 feeds install -a 之前
+#  补一次 ./scripts/feeds update -i 重建索引。
 CONFIG_PACKAGE_coremark=y
 CONFIG_PACKAGE_cpufreq=y
 CONFIG_PACKAGE_curl=y
@@ -145,3 +163,53 @@ CONFIG_PACKAGE_usb-modeswitch=y
 CONFIG_PACKAGE_usbmuxd=y
 CONFIG_PACKAGE_usbutils=y
 CONFIG_PACKAGE_xz-utils=y
+
+#======================= 新增：参考 dark 那份配置补进来的实用件 =======================
+#来源：拉了 darkrain88/VOpenWRT-CI 的 IPQ60XX-WIFI-YES 固件 manifest 逐包比对后挑的，
+#  只留「对使用有确切作用」的；passwall 全套（xray-core / mihomo-meta / chinadns-ng /
+#  haproxy / geoview …合计 40MB+，与 nikki 完全重叠）没要。
+#  这些包都不在 kenzok8/small-package 里，不会被 WRT-CORE.yml「删官方同名包」那步吃掉。
+
+#---- 补真缺口：WireGuard 之前只有内核模块、界面上根本配不了 ----
+#kmod-wireguard 一直在开，但缺 proto 支持与 wg 命令 → LuCI 里建不出 WG 接口，模块白装。
+CONFIG_PACKAGE_luci-proto-wireguard=y
+CONFIG_PACKAGE_wireguard-tools=y
+
+#---- 中文默认设置：时区 Asia/Shanghai、中文界面、国内镜像源 ----
+CONFIG_PACKAGE_default-settings=y
+CONFIG_PACKAGE_default-settings-chn=y
+
+#---- 小工具 ----
+CONFIG_PACKAGE_luci-app-cpufreq=y
+CONFIG_PACKAGE_luci-app-uhttpd=y
+CONFIG_PACKAGE_socat=y
+CONFIG_PACKAGE_wget-ssl=y
+#coreutils 子包：busybox 里没有或行为不一致，nikki / ddns-go / openclash 的脚本会调到
+CONFIG_PACKAGE_coreutils-base64=y
+CONFIG_PACKAGE_coreutils-nohup=y
+CONFIG_PACKAGE_coreutils-timeout=y
+#bash：openclash 的 DEPENDS 之一。以前是 Docker 顺带拉进来的，砍掉 Docker 后要显式写，
+#  否则 openclash 启动时找不到 /bin/bash。
+CONFIG_PACKAGE_bash=y
+
+#---- SSL 证书：自动申请 / 续签 Let's Encrypt，支持 DNS API 验证 ----
+CONFIG_PACKAGE_acme=y
+CONFIG_PACKAGE_acme-acmesh=y
+CONFIG_PACKAGE_acme-acmesh-dnsapi=y
+CONFIG_PACKAGE_acme-common=y
+CONFIG_PACKAGE_luci-app-acme=y
+
+#---- 流量统计：WAN 流量按时 / 日 / 月统计，重启不丢 ----
+CONFIG_PACKAGE_vnstat2=y
+CONFIG_PACKAGE_vnstati2=y
+CONFIG_PACKAGE_luci-app-vnstat2=y
+
+#---- 负载曲线：CPU / 内存 / 接口 / 负载的历史图表 ----
+CONFIG_PACKAGE_collectd=y
+CONFIG_PACKAGE_rrdtool1=y
+CONFIG_PACKAGE_luci-app-statistics=y
+
+#---- 主题：Aurora（dark 那份用的）。常用主题仍是 argon，由 workflow 的 WRT_THEME 决定 ----
+CONFIG_PACKAGE_luci-theme-aurora=y
+CONFIG_PACKAGE_luci-app-aurora-config=y
+CONFIG_PACKAGE_luci-i18n-aurora-config-zh-cn=y
