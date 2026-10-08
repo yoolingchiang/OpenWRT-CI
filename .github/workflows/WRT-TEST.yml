@@ -10,34 +10,24 @@ on:
   workflow_dispatch:
     inputs:
       CONFIG:
-        default: 'MEDIATEK-WIFI-YES'
+        default: 'IPQ60XX'
         required: true
         type: choice
         options:
-          - AIROHA-WIFI-NO
-          - IPQ53XX-WIFI-NO
-          - IPQ60XX-WIFI-YES
-          - IPQ60XX-WIFI-NO
-          - IPQ60XX-JDCLOUD
-          - IPQ60XX-ZNM2-WIFI-NO
-          - IPQ807X-WIFI-YES
-          - IPQ807X-WIFI-NO
-          - IPQ95XX-WIFI-YES
-          - MEDIATEK-WIFI-YES
-          - MEDIATEK-WIFI-NO
-          - ROCKCHIP
-          - X86
+          #只留本仓库实际维护的配置，已删除的机型配置不再出现在下拉里
+          - IPQ60XX
+          - IPQ60XX-noWiFi
           - TEST
       SOURCE:
         default: 'VIKINGYFY/immortalwrt'
         required: true
         type: choice
         options:
+          #与四条正式工作流对齐，只留这两个源
           - VIKINGYFY/immortalwrt
-          - immortalwrt/immortalwrt
-          - LiBwrt/openwrt-6.x
-          - qosmio/openwrt-ipq
+          - LiBwrt/LibWrt
       BRANCH:
+        #选 LiBwrt/LibWrt 时这里要手改成 25.12-nss，否则拉不到分支
         default: 'main'
         required: true
         type: string
@@ -65,7 +55,7 @@ jobs:
       #编译配置
       WRT_CONFIG: ${{inputs.CONFIG}}
       #默认主题
-      WRT_THEME: aurora
+      WRT_THEME: argon
       #默认主机名
       WRT_NAME: OWRT
       #默认WIFI名称
