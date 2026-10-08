@@ -8,9 +8,9 @@
 
 | 配置               | 设备                          | WiFi | 硬件                               |
 | ---------------- | --------------------------- | ---- | -------------------------------- |
-| `JDCloud-WiFi`   | 京东云亚瑟 RE-SS-01 / AX1800 Pro | 有    | IPQ6000，**硬改 1G RAM** + 64G eMMC |
+| `JDCloud-WiFi`   | 京东云亚瑟 RE-SS-01 / AX1800 Pro | 有    | IPQ6000，硬改 1G RAM** + 64G eMMC |
 | `JDCloud-noWiFi` | 京东云亚瑟 RE-SS-01 / AX1800 Pro | 无    | 同上（当纯有线路由 / 外接 AP 用）             |
-| `ZNM2-noWiFi`    | 兆能 ZN-M2                    | 无    | IPQ6000，**硬改512MB RAM + 128MB NAND   |
+| `ZNM2-noWiFi`    | 兆能 ZN-M2                    | 无    | IPQ6000，硬改512MB RAM + 128MB NAND   |
 
 **3 条工作流，一条工作流 = 一份设备配置**。源码线不写死在文件里，而是**运行时用  
 `SOURCE` 下拉框手动选**，一次运行只出那一条线的固件。
