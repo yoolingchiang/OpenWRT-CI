@@ -1,9 +1,0 @@
-#构建期生成的第三方源码溯源表
-third-party-sources.txt
-
-#私有扩展（不会被提交，方便本地放自己的配置/脚本）
-Config/PRIVATE.txt
-Scripts/PRIVATE.sh
-
-#本地临时目录（离线验证脚本用的假源码树）
-.tmp/
