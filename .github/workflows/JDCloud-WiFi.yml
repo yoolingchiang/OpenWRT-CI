@@ -1,49 +1,35 @@
 # SPDX-License-Identifier: MIT
 # Copyright (C) 2026 VIKINGYFY
 
-#CI项目
-name: WRT-TEST
+#CI项目：京东云亚瑟 RE-SS-01 / AX1800 Pro —— 带 WiFi 版
+#CI源码：运行时用 SOURCE 下拉框选 OWrt（ImmortalWrt main / 6.18）或 LibWrt（25.12-nss / 6.12），一次只出一个固件
+#CI粒度：一条工作流 = 一份设备配置；源码线在运行时手动选，不做矩阵展开
+name: JDCloud-WiFi
 
 #CI计划
 on:
-  #手动编译
+  #仅手动编译（已关闭所有自动触发）
   workflow_dispatch:
     inputs:
-      CONFIG:
-        default: 'JDCloud-WiFi'
-        required: true
-        type: choice
-        options:
-          #只留本仓库实际维护的配置，已删除的机型配置不再出现在下拉里
-          - JDCloud-WiFi
-          - JDCloud-noWiFi
-          - ZNM2-noWiFi
-          - TEST
       SOURCE:
-        description: '选择源码线（与三条正式工作流同一套下拉框）'
+        description: '选择源码线：一次运行只编译这一个源码线的固件。两条线都要就手动再跑一次。'
         default: 'OWrt'
         required: true
         type: choice
         options:
           #OWrt   = VIKINGYFY/immortalwrt 分支 main       （内核 6.18，主机名 OWrt   / 192.168.10.1）
           #LibWrt = LiBwrt/LibWrt        分支 25.12-nss  （内核 6.12，主机名 LibWrt / 192.168.20.1）
+          #分支 / 仓库 / 主机名 / IP 全部由这个选项自动带出，不需要再手填
           - OWrt
           - LibWrt
-      BRANCH:
-        #留空 = 跟随上面源码线的默认分支（OWrt→main、LibWrt→25.12-nss）；
-        #要临时验证别的分支时才在这里手填，填了就以这里为准
-        default: ''
-        required: false
-        type: string
       PACKAGE:
+        description: '手动调整插件包，多个请用\n符号隔开。'
         required: false
         type: string
       TEST:
         description: '仅输出配置文件，不编译固件。'
-        #必须是布尔字面量：WRT-CORE 的 WRT_TEST 是 boolean，写成 'true' 字符串
-        #会被判为真值之外的语义，导致本工作流真的去编译固件
-        default: true
-        required: true
+        default: false
+        required: false
         type: boolean
 
 #CI权限
@@ -51,13 +37,14 @@ permissions: write-all
 
 #CI任务
 jobs:
-  config:
-    name: ${{inputs.CONFIG}} · ${{inputs.SOURCE}}
+  wrt:
+    #job 名带上源码线，Actions 里一眼看出这次跑的是哪条线
+    name: 京东云亚瑟 带WiFi · ${{inputs.SOURCE}}
     #调用公用编译核心WRT-CORE.yml
     uses: ./.github/workflows/WRT-CORE.yml
     with:
-      #编译配置
-      WRT_CONFIG: ${{inputs.CONFIG}}
+      #编译配置（对应 Config/JDCloud-WiFi.txt）
+      WRT_CONFIG: JDCloud-WiFi
       #默认主题
       WRT_THEME: argon
       #默认主机名：直接用源码线名（OWrt / LibWrt）
@@ -66,18 +53,17 @@ jobs:
       WRT_SSID: ${{inputs.SOURCE}}
       #默认WIFI密码
       WRT_WORD: 12345678
-      #默认地址：OWrt 线 10.x、LibWrt 线 20.x
+      #默认地址：OWrt 线 10.x、LibWrt 线 20.x，两条线的固件在同一网络里不会撞 IP
       WRT_IP: ${{inputs.SOURCE == 'LibWrt' && '192.168.20.1' || '192.168.10.1'}}
       #默认密码，仅作提示，修改无用
       WRT_PW: 无
       #源码链接
       WRT_REPO: ${{inputs.SOURCE == 'LibWrt' && 'https://github.com/LiBwrt/LibWrt.git' || 'https://github.com/VIKINGYFY/immortalwrt.git'}}
-      #源码分支：BRANCH 手填优先，留空则跟随源码线默认分支
-      WRT_BRANCH: ${{inputs.BRANCH || (inputs.SOURCE == 'LibWrt' && '25.12-nss' || 'main')}}
+      #源码分支
+      WRT_BRANCH: ${{inputs.SOURCE == 'LibWrt' && '25.12-nss' || 'main'}}
       #源码名称
       WRT_SOURCE: ${{inputs.SOURCE == 'LibWrt' && 'LiBwrt/LibWrt' || 'VIKINGYFY/immortalwrt'}}
       #插件调整
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
-      #inputs.TEST 为空（workflow_run 触发时）兜底为 false，避免把空串传给 boolean 入参
       WRT_TEST: ${{inputs.TEST || false}}
