@@ -64,12 +64,6 @@ Config/
    几分钟出结果，验证能不能过 `defconfig`。
 3. 正式编译跑对应的 `JDCloud-*` / `ZNM2-*`，**记得选 `SOURCE`**（默认 `OWrt`），产物在 Releases。
 
-> **分支不用填，也没有输入框。** 仓库 / 分支 / 主机名 / IP 全由 `SOURCE` 一个下拉框带出。  
-> 这不是偷懒：GitHub 的 `workflow_dispatch` 表单**不支持输入框联动**，早先留过一个  
-> `BRANCH` 输入框想让人手填，结果浏览器把它 autofill 成旧默认值 `main`，  
-> 选 `LibWrt` 却去拉 `main` —— 拉不到或拉到非 NSS 版本。删掉后这个坑就没了。  
-> 要临时测别的分支，直接改工作流里 `WRT_BRANCH` 那一行。
-
 ## 目录
 
 ```
