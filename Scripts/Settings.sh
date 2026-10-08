@@ -37,13 +37,28 @@ echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 
-#机型专属覆盖：Config/<机型>-OVERRIDE.txt
-#GENERAL.txt 是共用基座，但不同机型容量差异很大（例如亚瑟 64G eMMC 与 M2 128MB NAND
-#不可能共用同一份插件清单）。覆盖文件在这里最后追加，优先级高于 GENERAL.txt，
-#可以把共用基座里对当前机型来说多余的包显式关成 =n。
-if [ -f "$GITHUB_WORKSPACE/Config/$WRT_CONFIG-OVERRIDE.txt" ]; then
-	echo "Applying override from Config/$WRT_CONFIG-OVERRIDE.txt..."
-	cat "$GITHUB_WORKSPACE/Config/$WRT_CONFIG-OVERRIDE.txt" >> ./.config
+#设备专属覆盖：Config/<任意前缀>-<设备关键词>-Override.txt
+#匹配依据是「当前编译的主设备名」，不是配置名 —— 所以覆盖文件既不区分 WiFi、也不绑定源码：
+#IPQ60XX-JDCloud-Override.txt 命中 jdcloud_re-ss-01，IPQ60XX-ZNM2-Override.txt 命中 zn_m2，
+#配置叫 IPQ60XX 还是 IPQ60XX-noWiFi、源码用 ImmortalWrt 还是 LibWrt，都一样生效。
+#比较前统一去掉 _ 和 - 并转小写（zn_m2 → znm2，才能和关键词 ZNM2 对上）。
+#覆盖文件追加在 .config 末尾，优先级高于 GENERAL.txt。
+WRT_DEVICE="$(sed -n 's/^CONFIG_TARGET_DEVICE_.*_DEVICE_\([A-Za-z0-9_-]\{1,\}\)=y[[:space:]]*$/\1/p' ./.config 2>/dev/null | head -n 1)"
+if [ -n "$WRT_DEVICE" ]; then
+	WRT_DEVNORM="$(printf '%s' "$WRT_DEVICE" | tr -d '_-' | tr '[:upper:]' '[:lower:]')"
+	for WRT_OVF in "$GITHUB_WORKSPACE"/Config/*-Override.txt; do
+		[ -f "$WRT_OVF" ] || continue
+		WRT_OVKEY="$(basename "$WRT_OVF" -Override.txt)"
+		WRT_OVKEY="${WRT_OVKEY##*-}"
+		WRT_OVKEY="$(printf '%s' "$WRT_OVKEY" | tr -d '_-' | tr '[:upper:]' '[:lower:]')"
+		[ -n "$WRT_OVKEY" ] || continue
+		case "$WRT_DEVNORM" in
+			*"$WRT_OVKEY"*)
+				echo "Applying override from $(basename "$WRT_OVF") (device: $WRT_DEVICE)..."
+				cat "$WRT_OVF" >> ./.config
+				;;
+		esac
+	done
 fi
 
 #引入私有扩展配置
@@ -59,8 +74,9 @@ fi
 
 #无WIFI配置标志
 #WRT-CORE 里 WRT_WIFI 的初值是 none，这里给一个确定值：
-#配置名同时含 wifi 与 no（如 IPQ60XX-ZNM2-WIFI-NO）判为 wifi-no，其余一律 wifi-yes，
-#否则固件文件名会带上错误的 WIFI 标记。
+#配置名小写后同时含 wifi 与 no（IPQ60XX-noWiFi）判为 wifi-no，其余一律 wifi-yes，
+#否则固件文件名会带上错误的 WIFI 标记。带 WiFi 的配置名不写 WiFi 后缀（IPQ60XX），
+#无 WiFi 的显式写 noWiFi，这样一眼能分清。
 if [[ "${WRT_CONFIG,,}" == *"wifi"* && "${WRT_CONFIG,,}" == *"no"* ]]; then
 	echo "WRT_WIFI=wifi-no" >> $GITHUB_ENV
 else
