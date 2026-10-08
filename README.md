@@ -1,6 +1,6 @@
 # YOpenWRT-CI
 
-自用 OpenWrt 云编译仓库，维护两台 IPQ6000 设备。骨架 fork 自 VIKINGYFY/OpenWRT-CI，  
+自用 OpenWrt 云编译仓库，维护两台 IPQ6000 设备。骨架 fork 自 VIKINGYFY/OpenWRT-CI
 
 ## 产出矩阵
 
