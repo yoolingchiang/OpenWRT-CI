@@ -29,12 +29,12 @@ on:
           #LibWrt = LiBwrt/LibWrt        分支 25.12-nss  （内核 6.12，主机名 LibWrt / 192.168.20.1）
           - OWrt
           - LibWrt
-      BRANCH:
-        #留空 = 跟随上面源码线的默认分支（OWrt→main、LibWrt→25.12-nss）；
-        #要临时验证别的分支时才在这里手填，填了就以这里为准
-        default: ''
-        required: false
-        type: string
+      #★这里曾经有个 BRANCH 输入框，已删除 —— 不要再加回来：
+      #GitHub 的 workflow_dispatch 表单不支持联动，选 SOURCE 不会让 BRANCH 自动填值，
+      #而浏览器会 autofill 成旧默认值 main。一旦 BRANCH 非空，表达式就会优先用它，
+      #结果是「选了 LibWrt 却去拉 main 分支」—— 拉不到，或者拉到非 NSS 的版本。
+      #分支与源码线强绑定，交给 SOURCE 带出即可；真要临时测别的分支，改下面
+      #WRT_BRANCH 那一行。
       PACKAGE:
         required: false
         type: string
@@ -72,8 +72,8 @@ jobs:
       WRT_PW: 无
       #源码链接
       WRT_REPO: ${{inputs.SOURCE == 'LibWrt' && 'https://github.com/LiBwrt/LibWrt.git' || 'https://github.com/VIKINGYFY/immortalwrt.git'}}
-      #源码分支：BRANCH 手填优先，留空则跟随源码线默认分支
-      WRT_BRANCH: ${{inputs.BRANCH || (inputs.SOURCE == 'LibWrt' && '25.12-nss' || 'main')}}
+      #源码分支：完全由 SOURCE 带出（OWrt→main、LibWrt→25.12-nss），不接受手填
+      WRT_BRANCH: ${{inputs.SOURCE == 'LibWrt' && '25.12-nss' || 'main'}}
       #源码名称
       WRT_SOURCE: ${{inputs.SOURCE == 'LibWrt' && 'LiBwrt/LibWrt' || 'VIKINGYFY/immortalwrt'}}
       #插件调整
