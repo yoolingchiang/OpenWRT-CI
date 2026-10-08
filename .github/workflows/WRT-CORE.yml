@@ -285,6 +285,22 @@ jobs:
 
             find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
 
+            #=m 的包：bin/packages/ 下编出来的 apk 默认不会进 upload，等于白编。
+            #  这里挑出来一起发。只收 luci-* 与几个大件主程序，避免把上百个依赖 apk
+            #  全塞进 release（依赖可以刷完用 apk add 自己拉）。
+            #  注意：=m 的包不写进 manifest，所以 Release 正文的插件清单里看不到它们。
+            if [ -d ./bin/packages ]; then
+              mkdir -p ./upload/packages/
+              find ./bin/packages -type f -name "*.apk" \
+                \( -name "luci-app-*.apk" -o -name "luci-i18n-*.apk" -o -name "luci-theme-*.apk" \
+                   -o -name "luci-proto-*.apk" -o -name "luci-lib-*.apk" \
+                   -o -name "openlist2*.apk" -o -name "easytier*.apk" \
+                   -o -name "mihomo*.apk" -o -name "yq*.apk" -o -name "ruby*.apk" \) \
+                -exec cp -f {} ./upload/packages/ \; 2>/dev/null
+              echo "===== =m 编出的 apk ($(ls ./upload/packages/ 2>/dev/null | wc -l) 个) ====="
+              ls -lh ./upload/packages/ 2>/dev/null | head -40
+            fi
+
             make clean -j$(nproc)
           fi
 
@@ -292,7 +308,9 @@ jobs:
         uses: softprops/action-gh-release@master
         with:
           tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_BRANCH}}-${{env.WRT_DATE}}
-          files: ./wrt/upload/*.*
+          files: |
+            ./wrt/upload/*.*
+            ./wrt/upload/packages/*.apk
           body: |
             这是个平台固件包，内含多个设备！
             请注意选择你需要的设备固件！
