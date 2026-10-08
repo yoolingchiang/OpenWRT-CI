@@ -24,31 +24,16 @@ mkdir -p "$(dirname "$THIRD_PARTY_SOURCES_FILE")"
 printf 'Repository\tBranch\tCommit\n' > "$THIRD_PARTY_SOURCES_FILE"
 
 #待解析的配置文件：机型配置 + 通用配置（此时 .config 尚未生成，直接读源文件）
+#自包含清单架构：Config/<配置>.txt 已经是完整清单，GENERAL.txt 是共用基座，
+#两者按顺序扫描，同名的 =n 能盖掉 GENERAL.txt 里的 =y。
+#（早期还有一层 Config/*-Override.txt 按设备关键词自动追加，现已取消 ——
+# 亚瑟要出 WiFi 与 noWiFi 两份，Override 只认设备名分辨不了形态，见 Settings.sh 注释。）
 WRT_CONFIG_FILES=()
 if [ -n "${WRT_CONFIG:-}" ] && [ -f "$WORKSPACE/Config/$WRT_CONFIG.txt" ]; then
 	WRT_CONFIG_FILES+=("$WORKSPACE/Config/$WRT_CONFIG.txt")
 fi
 if [ -f "$WORKSPACE/Config/GENERAL.txt" ]; then
 	WRT_CONFIG_FILES+=("$WORKSPACE/Config/GENERAL.txt")
-fi
-#覆盖文件放最后：awk 顺序扫描，同名的 =n 能盖掉前面 GENERAL.txt 里的 =y。
-#匹配逻辑与 Settings.sh 完全一致 —— 按设备关键词，不按配置名。
-#（此处 .config 还没生成，所以从 Config/$WRT_CONFIG.txt 里读主设备名）
-if [ -n "${WRT_CONFIG:-}" ] && [ -f "$WORKSPACE/Config/$WRT_CONFIG.txt" ]; then
-	WRT_DEVICE="$(sed -n 's/^CONFIG_TARGET_DEVICE_.*_DEVICE_\([A-Za-z0-9_-]\{1,\}\)=y[[:space:]]*$/\1/p' "$WORKSPACE/Config/$WRT_CONFIG.txt" 2>/dev/null | head -n 1)"
-	if [ -n "$WRT_DEVICE" ]; then
-		WRT_DEVNORM="$(printf '%s' "$WRT_DEVICE" | tr -d '_-' | tr '[:upper:]' '[:lower:]')"
-		for WRT_OVF in "$WORKSPACE"/Config/*-Override.txt; do
-			[ -f "$WRT_OVF" ] || continue
-			WRT_OVKEY="$(basename "$WRT_OVF" -Override.txt)"
-			WRT_OVKEY="${WRT_OVKEY##*-}"
-			WRT_OVKEY="$(printf '%s' "$WRT_OVKEY" | tr -d '_-' | tr '[:upper:]' '[:lower:]')"
-			[ -n "$WRT_OVKEY" ] || continue
-			case "$WRT_DEVNORM" in
-				*"$WRT_OVKEY"*) WRT_CONFIG_FILES+=("$WRT_OVF") ;;
-			esac
-		done
-	fi
 fi
 
 #一次性扫描全部配置文件，建立「已启用包名」索引
