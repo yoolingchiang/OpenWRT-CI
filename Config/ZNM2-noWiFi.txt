@@ -253,6 +253,9 @@ CONFIG_PACKAGE_luci-app-openlist2=n
 CONFIG_PACKAGE_luci-app-timecontrol=n
 CONFIG_PACKAGE_luci-app-travelmate=n
 CONFIG_PACKAGE_luci-app-ttyd=n
+#watchcat 主程序包在源码树里已消失（packages feed 的官方版被 smpackage 同名清理删掉、
+#smpackage 版又因 feed 优先级装不上），开着 luci-app-watchcat 会在 package/install 阶段中断编译。
+#兆能 M2 本来就不需要，保持关闭；原因详见 JDCloud-WiFi.txt 第九节。
 CONFIG_PACKAGE_luci-app-watchcat=n
 
 #---- 保持单一代理栈（只用 nikki）----

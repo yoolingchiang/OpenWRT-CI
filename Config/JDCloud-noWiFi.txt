@@ -257,7 +257,11 @@ CONFIG_PACKAGE_luci-app-easytier=y
 CONFIG_PACKAGE_luci-app-timecontrol=y
 #便携路由场景（体积小、常带出门）
 CONFIG_PACKAGE_luci-app-travelmate=y
-CONFIG_PACKAGE_luci-app-watchcat=y
+#luci-app-watchcat：依赖的 watchcat 包在源码树里已消失（原因见第九节），开着会在
+#  package/install 阶段报 "unable to select packages: watchcat (no such package)" 中断编译。
+#  本机型用不上（定时重启有 luci-app-autoreboot，上网时间控制有 luci-app-timecontrol），保持关闭。
+#  想恢复：把下一行改回 =y，并先跑一次 WRT-TEST 确认 DepCheck 不再报 watchcat 缺失。
+CONFIG_PACKAGE_luci-app-watchcat=n
 CONFIG_PACKAGE_luci-app-ttyd=y
 #存储类服务：跑在 eMMC 上没问题
 CONFIG_PACKAGE_luci-app-samba4=y
@@ -280,12 +284,18 @@ CONFIG_PACKAGE_luci-app-passwall=n
 #把本行改成 =y，并把上面 luci-app-nikki 两行改成 =n。
 CONFIG_PACKAGE_luci-app-openclash=n
 
-#以下 4 项依赖缺失会中断编译（源码已迁移 apk，缺依赖是致命错误而非警告）：
+#以下 5 项依赖缺失会中断编译（源码已迁移 apk，缺依赖是致命错误而非警告）：
 #  luci-app-passwall2 / luci-app-mosdns → 依赖 v2ray-geoip、v2ray-geosite，
 #    这两个包已被生态合并改名为 v2ray-geodata，但 passwall2 的 Makefile 仍按旧名声明依赖，
 #    apk 会在 package/install 报 unable to select packages，整次编译在最后一步中断。
 #  luci-app-netspeedtest → 依赖 python3-email、python3-pkg-resources，当前源里不存在。
 #  luci-app-tailscale → 依赖的 tailscale 主程序包在当前源里不存在。
+#  luci-app-watchcat → 依赖 watchcat。watchcat 本来在 packages feed（utils/watchcat）里有，
+#    但 kenzok8/small-package 也有同名目录，WRT-CORE.yml 的「删官方同名包」清理把它删掉了；
+#    而 feeds install -a 时 packages feed 排在 smpackage 前面、先占住这个名字，
+#    smpackage 的 watchcat 接管不了 —— 结果这个包从源码树里彻底消失（详见 WRT-CORE.yml）。
+#    同类被吃掉的还有 119 个包（aria2 / adguardhome / frp / haproxy / chinadns-ng / dae 等），
+#    但它们只在被别的包依赖时才会报错，自己启用时是「静默装不上」，务必留意。
 #等上游补齐后再打开；打开前先跑一次 WRT-TEST 看 DepCheck 是否还报缺失。
 CONFIG_PACKAGE_luci-app-passwall2=n
 CONFIG_PACKAGE_luci-app-mosdns=n
