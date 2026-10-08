@@ -1,7 +1,6 @@
 # YOpenWRT-CI
 
 自用 OpenWrt 云编译仓库，维护两台 IPQ6000 设备。骨架 fork 自 VIKINGYFY/OpenWRT-CI，  
-配置组织方式参考 uiYzzi 的 openwrt_jdcloud_re-ss-01_ci（一设备一配置、自包含清单）。
 
 ## 产出矩阵
 
