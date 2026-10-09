@@ -61,6 +61,18 @@ else
 fi
 AVAIL=$(wc -l < "$WORK/avail")
 
+#---------- 2b. 选中的包【本身】在不在源码树里 ----------
+#这一条是 mwan3 那次编译失败逼出来的：Config 里写了 CONFIG_PACKAGE_mwan3=y，
+#但源码树里根本没有 mwan3 这个包 —— Kconfig 没有这个符号，defconfig 会静默丢掉这一行，
+#于是 mwan3 不会被编译、也进不了 apk 索引，最后依赖它的 luci-app-mwan3 在
+#package/install 阶段炸 "ERROR: unable to select packages: mwan3 (no such package)"。
+#上面第 4 步只比对「依赖在不在」，查不出「包自己失踪了」，所以这里补一道。
+awk -v avail="$WORK/avail" '
+	BEGIN { while ((getline l < avail) > 0) have[l]=1 }
+	{ if (!($0 in have)) print $0 }
+' "$WORK/selected" > "$WORK/ghost"
+GHOST=$(wc -l < "$WORK/ghost")
+
 #---------- 3. 依赖列表 ----------
 #格式统一为 "包名<TAB>依赖token"，后面再统一清洗
 : > "$WORK/deps_raw"
@@ -70,8 +82,15 @@ if [ -f "$PKGINFO" ]; then
 		/^Package: / { pkg=$2; next }
 		/^(Depends|Extra-Depends): / {
 			sub(/^(Depends|Extra-Depends): /, "")
-			n=split($0, arr, ",")
-			for (i=1; i<=n; i++) print pkg, arr[i]
+			#▲必须按【空格】也切：.packageinfo 里 Depends 多数写成 "+libc +mwan3"
+			#  （空格分隔、不带逗号）。原来只按逗号切，整行当一个 token，
+			#  到清洗那步又被 "只留第一个词" 截一刀 —— 实际只检查了第一个依赖，
+			#  后面的一律看不到（mwan3 就是这么漏掉的）。
+			#  括号里的版本约束先整段去掉，免得 ">=1.2" 被当成包名误报。
+			gsub(/\([^)]*\)/, "")
+			gsub(/,/, " ")
+			n=split($0, arr, /[[:space:]]+/)
+			for (i=1; i<=n; i++) if (arr[i] != "") print pkg, arr[i]
 		}
 	' "$PKGINFO" >> "$WORK/deps_raw"
 else
@@ -150,6 +169,16 @@ echo "==================== 依赖预检（DepCheck） ===================="
 echo "选中包 $SELECTED 个 / 可用包 $AVAIL 个（来源：$AVAIL_SRC）"
 echo "--------------------------------------------------------------"
 
+if [ "$GHOST" -gt 0 ]; then
+	echo "⚠️  其中 $GHOST 个包在源码树里根本不存在（写了也白写，defconfig 会静默丢弃）："
+	sed 's/^/      /' "$WORK/ghost"
+	echo "   若还有别的包依赖它们，编译会在 package/install 阶段中断。"
+	echo "--------------------------------------------------------------"
+	while IFS= read -r g; do
+		echo "::error::DepCheck: 配置选中了 $g，但源码树里没有这个包（defconfig 会丢弃该行；若有别的包依赖它，package/install 阶段会报 no such package）"
+	done < "$WORK/ghost"
+fi
+
 if [ "$MISSING" -eq 0 ]; then
 	echo "✅ 未发现缺失依赖"
 else
@@ -173,6 +202,10 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
 		echo "### 依赖预检（DepCheck）"
 		echo ""
 		echo "- 选中包：**$SELECTED** 个；可用包：**$AVAIL** 个（来源：$AVAIL_SRC）"
+		if [ "$GHOST" -gt 0 ]; then
+			echo "- ⚠️ 有 **$GHOST** 个选中的包在源码树里不存在（写了也白写，defconfig 会丢弃）："
+			sed 's/^/  - /' "$WORK/ghost"
+		fi
 		if [ "$MISSING" -eq 0 ]; then
 			echo "- 结果：✅ 未发现缺失依赖"
 		else

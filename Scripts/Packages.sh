@@ -24,8 +24,13 @@ mkdir -p "$(dirname "$THIRD_PARTY_SOURCES_FILE")"
 printf 'Repository\tBranch\tCommit\n' > "$THIRD_PARTY_SOURCES_FILE"
 
 #待解析的配置文件：机型配置 + 通用配置（此时 .config 尚未生成，直接读源文件）
-#自包含清单架构：Config/<配置>.txt 已经是完整清单，GENERAL.txt 是共用基座，
-#两者按顺序扫描，同名的 =n 能盖掉 GENERAL.txt 里的 =y。
+#自包含清单架构：Config/<配置>.txt 已经是完整清单，GENERAL.txt 是共用基座。
+#★顺序是「机型配置 → GENERAL.txt」，GENERAL 在后 → 同一 key 由 GENERAL 说了算。
+#  所以机型层写的 =n 压不住 GENERAL 里的 =y，反过来 GENERAL 的 =y 会盖掉机型的 =n。
+#  （此前的注释写反了，害得 ZNM2 的五个 =n 以为生效实则没生效；已连同 GENERAL.txt 一起
+#   改掉解决 —— 详见 GENERAL.txt 的「为什么这里越来越短」一节。）
+#本文件的扫描结果只用于决定「要不要 clone 某个第三方包源」，真正生成 .config 的合并在
+#WRT-CORE.yml 的 Custom Settings 步骤，那里的 cat 顺序同样是机型在前、GENERAL 在后。
 #（早期还有一层 Config/*-Override.txt 按设备关键词自动追加，现已取消 ——
 # 亚瑟要出 WiFi 与 noWiFi 两份，Override 只认设备名分辨不了形态，见 Settings.sh 注释。）
 WRT_CONFIG_FILES=()
@@ -35,11 +40,25 @@ fi
 if [ -f "$WORKSPACE/Config/GENERAL.txt" ]; then
 	WRT_CONFIG_FILES+=("$WORKSPACE/Config/GENERAL.txt")
 fi
+#★最终裁决层（PRIVATE）也必须扫进来，否则会出「包选了却拉不到」的怪事：
+#  在 PRIVATE 里写了 CONFIG_PACKAGE_xxx=y 想装某个第三方插件，而本脚本没扫这个文件，
+#  就判定「配置里没选中」而跳过 clone —— 后面 defconfig 时这个包根本不存在，
+#  轻则静默装不上，重则在 package/install 阶段报 unable to select packages 中断编译。
+#下面的顺序必须与 Settings.sh / WRT-CORE.yml 里 .config 的合并顺序一致
+#（越靠后优先级越高）：机型 → GENERAL → PRIVATE.txt（通用）→ PRIVATE-<配置>.txt（特定）。
+#PRIVATE-<配置>.txt 排最后，是为了让「针对某一台的定夺」能压过「对所有台的统一设定」。
+if [ -f "$WORKSPACE/Config/PRIVATE.txt" ]; then
+	WRT_CONFIG_FILES+=("$WORKSPACE/Config/PRIVATE.txt")
+fi
+if [ -n "${WRT_CONFIG:-}" ] && [ -f "$WORKSPACE/Config/PRIVATE-$WRT_CONFIG.txt" ]; then
+	WRT_CONFIG_FILES+=("$WORKSPACE/Config/PRIVATE-$WRT_CONFIG.txt")
+fi
 
 #一次性扫描全部配置文件，建立「已启用包名」索引
 #只跑一次 awk：早期版本每个候选包名都 fork 一次 awk，30 个包 × 5 个候选名 = 上百次进程创建，
 #在 fork 昂贵的环境里能把这一步拖到一分钟以上。这里改成单次扫描 + 关联数组查表。
-#扫描顺序 = 机型配置 → GENERAL → 机型覆盖，后出现的同名行覆盖前面的结果（=n 能盖掉 =y）。
+#扫描顺序 = 机型配置 → GENERAL，后出现的同名行覆盖前面的结果 —— 注意是「后出现者胜」，
+#而 GENERAL 排在后，所以 GENERAL 的 =y 会盖掉机型层的 =n（=n 盖不掉 =y，别记反了）。
 declare -A WRT_ENABLED_PKGS=()
 if [ "${#WRT_CONFIG_FILES[@]}" -gt 0 ]; then
 	WRT_PKG_SCAN="$(

@@ -31,6 +31,106 @@ sed -i "s/192\.168\.[0-9]*\.[0-9]*/$WRT_IP/g" $CFG_FILE
 #修改默认主机名
 sed -i "s/hostname='.*'/hostname='$WRT_NAME'/g" $CFG_FILE
 
+#======================= 配置一致性：拦截 GENERAL.txt 反向覆盖 =======================
+#★为什么非要有这一步 —— 这个坑已经真踩过一次，而且踩得很安静：
+#  生成 .config 的顺序是「机型配置 → GENERAL.txt」（WRT-CORE.yml 的 Custom Settings 步骤里
+#  两条 cat，机型在前、GENERAL 在后），同一个 CONFIG_* key **后出现者胜**。于是 GENERAL 的
+#  取值会静默翻掉机型层写的：编译照常成功、日志一条警告都没有，可编出来的固件跟配置写的不一样。
+#  实际事故：ZNM2-noWiFi.txt 里 gecoosac / partexp / samba4 / statistics / wolultra 五个 =n
+#  全部失效、照样进固件 —— 配置看着只装 7 个 luci 包，实际装了 20 个。
+#现在做成硬检查：命中就列清单 + ::error:: 中断，绝不让这种偏差再流到固件里。
+#判定范围放宽到「两边都写了同一个 key 但取值不同」而不是只查 =n vs =y ——
+#  机型层 =m（想只编包）被 GENERAL 的 =y 顶成进固件，同样是无声的意外，一样要拦。
+#三条出路：
+#  1) 把这个 key 从 GENERAL.txt 删掉，让它只待在需要的机型配置里 —— 最干净；
+#     GENERAL 只该放三份配置一致同意的东西（纪律写在 GENERAL.txt 顶部）。
+#  2) 机型配置别写不同值，也就是承认三份配置本来就一致。
+#  3) 用最终裁决层 PRIVATE 明确接管（见本文件末尾「最终裁决层」那段）——
+#     GENERAL 是共用基座、不想为了一台设备就动它时，这招最省事：
+#     冲突 key 只要在 PRIVATE 里显式写了值，本检查就认它是**有意为之**，放行不报错。
+DEV_CFG_FILE="$GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt"
+GEN_CFG_FILE="$GITHUB_WORKSPACE/Config/GENERAL.txt"
+#▲顺序（越靠后追加优先级越高）：先通用、后特定。
+#  这样「针对这一台的定夺」才压得住「对所有台的统一设定」—— 跟常见配置系统的
+#  「越具体越优先」一致。反过来（通用在后）会让 PRIVATE-ZNM2-noWiFi.txt 里想给 M2
+#  单独开的例外，被 PRIVATE.txt 的统一值闷掉，那这一层就失去意义了。
+PRIVATE_FILES=()
+if [ -f "$GITHUB_WORKSPACE/Config/PRIVATE.txt" ]; then
+	PRIVATE_FILES+=("$GITHUB_WORKSPACE/Config/PRIVATE.txt")
+fi
+if [ -n "${WRT_CONFIG:-}" ] && [ -f "$GITHUB_WORKSPACE/Config/PRIVATE-$WRT_CONFIG.txt" ]; then
+	PRIVATE_FILES+=("$GITHUB_WORKSPACE/Config/PRIVATE-$WRT_CONFIG.txt")
+fi
+#TEST 系列不走 GENERAL（WRT-CORE.yml 里那条分支只有一次 cat），不存在覆盖问题，跳过。
+if [ -n "${WRT_CONFIG:-}" ] && [ -f "$DEV_CFG_FILE" ] && [ -f "$GEN_CFG_FILE" ] \
+	&& [[ "${WRT_CONFIG,,}" != *"test"* ]]; then
+	DEV_MAP="$(mktemp)"
+	GEN_MAP="$(mktemp)"
+	PRIV_MAP="$(mktemp)"
+	CONFLICT_RAW="$(mktemp)"
+	CONFLICT_MAP="$(mktemp)"
+	#同一文件里同一个 key 出现多次时后者生效，awk 覆盖赋值天然保留了最后一次
+	sed 's/\r$//' "$DEV_CFG_FILE" |
+		awk -F= '/^CONFIG_[A-Za-z0-9_.-]+=[ynm]$/{ v[$1]=$2 } END{ for (k in v) print k"="v[k] }' |
+		sort -t= -k1,1 > "$DEV_MAP"
+	sed 's/\r$//' "$GEN_CFG_FILE" |
+		awk -F= '/^CONFIG_[A-Za-z0-9_.-]+=[ynm]$/{ v[$1]=$2 } END{ for (k in v) print k"="v[k] }' |
+		sort -t= -k1,1 > "$GEN_MAP"
+	#join 取两边都声明过的 key，再筛掉取值相同的（相同则无冲突），输出 key / 机型值 / GENERAL值
+	join -t= "$DEV_MAP" "$GEN_MAP" | awk -F= '$2 != $3 { print $1"\t"$2"\t"$3 }' > "$CONFLICT_RAW"
+	#最终裁决层：被 PRIVATE 显式写过值的 key，视为「我知道有冲突、就是要这个值」，摘出冲突清单
+	ADJUDICATED="$(mktemp)"
+	if [ "${#PRIVATE_FILES[@]}" -gt 0 ]; then
+		sed 's/\r$//' "${PRIVATE_FILES[@]}" |
+			awk -F= '/^CONFIG_[A-Za-z0-9_.-]+=[ynm]$/{ v[$1]=$2 } END{ for (k in v) print k"="v[k] }' |
+			sort -t= -k1,1 > "$PRIV_MAP"
+		comm -12 <(cut -f1 "$CONFLICT_RAW" | sort -u) <(cut -d= -f1 "$PRIV_MAP" | sort -u) > "$ADJUDICATED"
+	else
+		: > "$PRIV_MAP"
+	fi
+	#▲这里不能用经典的 `NR==FNR` 写法：ADJUDICATED 多数情况下是空文件（没用 PRIVATE 层时），
+	#  此时处理第二个文件时 NR 与 FNR 会在它的第一行同时等于 1，条件仍然成立，
+	#  于是 CONFLICT_RAW 的第一条冲突会被误当成「已接管」而悄悄吞掉 —— 实测过，确实少报一条。
+	#  改成比 FILENAME==ARGV[1] 才可靠：第一个文件为空时 awk 根本不会产生记录。
+	awk -F'\t' 'FILENAME==ARGV[1]{ ok[$1]=1; next } !($1 in ok)' "$ADJUDICATED" "$CONFLICT_RAW" > "$CONFLICT_MAP"
+	rm -f "$DEV_MAP" "$GEN_MAP" "$PRIV_MAP" "$CONFLICT_RAW"
+
+	#被 PRIVATE 接管的冲突：不拦，但要打印出来，免得以后忘了这层还在生效
+	if [ -s "$ADJUDICATED" ]; then
+		echo "::notice::以下 $(wc -l < "$ADJUDICATED" | tr -d ' ') 个 key 在机型层与 GENERAL.txt 取值不一致，已由最终裁决层 PRIVATE 明确接管，按 PRIVATE 的值生效：$(tr '\n' ' ' < "$ADJUDICATED")"
+	fi
+	rm -f "$ADJUDICATED"
+
+	CONFLICT_N="$(wc -l < "$CONFLICT_MAP" | tr -d ' ')"
+	if [ "$CONFLICT_N" -gt 0 ]; then
+		echo "=============================================================="
+		echo " 机型配置的取值被 GENERAL.txt 反向覆盖了（编译中止）"
+		echo "=============================================================="
+		while IFS=$'\t' read -r WRT_KEY DEV_VAL GEN_VAL; do
+			echo "  $WRT_KEY"
+			echo "      机型层 Config/$WRT_CONFIG.txt : =$DEV_VAL"
+			echo "      GENERAL.txt                   : =$GEN_VAL   ← 后加载，这条说了算"
+			case "$DEV_VAL" in
+				n) echo "      后果：想在机型层关掉，实际照样编进固件。" ;;
+				m) echo "      后果：想只编包不进固件，实际被塞进 rootfs。" ;;
+				y) echo "      后果：机型层想装，实际按 GENERAL 的 =$GEN_VAL 办。" ;;
+			esac
+		done < "$CONFLICT_MAP"
+		echo "--------------------------------------------------------------"
+		echo "为什么：WRT-CORE.yml 里 cat 的顺序是「机型配置 → GENERAL.txt」，"
+		echo "        GENERAL 在后，同一 key 后者覆盖前者，机型层压不住它。"
+		echo "怎么改（二选一）："
+		echo "  1) 把这些 key 从 GENERAL.txt 删掉、只留机型配置 —— 推荐；"
+		echo "     GENERAL 只放三份配置一致同意的内容，详见 GENERAL.txt 顶部说明。"
+		echo "  2) 机型配置改用与 GENERAL 相同的值，也就是承认三份本来就一致。"
+		echo "=============================================================="
+		echo "::error::配置冲突：$WRT_CONFIG 里有 $CONFLICT_N 项被 GENERAL.txt 反向覆盖，编译已中止。上面的清单给出了每个 key 的取值对照与修改办法。"
+		rm -f "$CONFLICT_MAP"
+		exit 1
+	fi
+	rm -f "$CONFLICT_MAP"
+fi
+
 #配置文件修改
 echo "CONFIG_PACKAGE_luci=y" >> ./.config
 echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
@@ -47,11 +147,25 @@ echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 #	...（原 Override 遍历逻辑，见 git 历史）
 #fi
 
-#引入私有扩展配置
-if [ -f "$GITHUB_WORKSPACE/Config/PRIVATE.txt" ]; then
-	echo "Applying private configurations from PRIVATE.txt..."
-	cat $GITHUB_WORKSPACE/Config/PRIVATE.txt >> ./.config
-fi
+#======================= 最终裁决层（PRIVATE）=======================
+#★这是整条 .config 合并链上**最后一个**追加层，所以它说了算，谁也覆盖不了它：
+#    机型配置 → GENERAL.txt → Settings.sh 注入(luci/主题) → ath11k/NSS 档位裁定
+#    → 按配置 PRIVATE → 全局 PRIVATE → make defconfig
+#  （make defconfig 之后还有一层依赖求解，它会补齐依赖、仲裁互斥，那是另一回事。）
+#用它来解决「GENERAL 是共用基座、不想为了一台设备就动它，但这台设备偏偏要例外」的问题：
+#  遇到 GENERAL 顶着某个值不放时，不必去改 GENERAL（改了会波及三份配置），
+#  只要在自己那份 PRIVATE 里写一行就行，保证最终结果一定是你想要的。
+#  典型用法：Config/PRIVATE-ZNM2-noWiFi.txt 里写 CONFIG_PACKAGE_xxx=n 给 M2 单独关掉某个包。
+#两级，都存在时**按配置的那份最后追加、优先级更高**：
+#  Config/PRIVATE-<配置名>.txt  只对 WRT_CONFIG 指定的那一份配置生效（推荐用这个）
+#  Config/PRIVATE.txt           对所有配置生效
+#两级都是 [ -f ] 守卫：文件不存在就整段跳过，零成本，仓库里不放这些文件完全不影响正常编译。
+#注意：用了 PRIVATE 接管冲突时，上面的配置一致性检查会打一条 ::notice:: 说明哪些 key 被接管，
+#      方便日后追溯「为什么这台设备的固件跟机型配置写的不一样」。
+for PRIVATE_FILE in "${PRIVATE_FILES[@]}"; do
+	echo "Applying final overrides from $(basename "$PRIVATE_FILE")..."
+	cat "$PRIVATE_FILE" >> ./.config
+done
 
 #高通平台参数统一裁定（ath11k 内存档位 + NSS 固件版本）
 #
