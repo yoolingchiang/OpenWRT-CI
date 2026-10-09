@@ -66,12 +66,29 @@ Config/
 | 文件系统 ext4/f2fs/vfat/exfat          | 开            | 开                    | **关**                                 |
 | 分区格式化工具（blkid/lsblk/fdisk/parted/e2fsprogs…） | 开            | 开                    | **关**（没有外接盘位，配套的也一起省掉）              |
 | coremark / 小工具                     | 开            | 开                    | **关**（NAND 省空间）                       |
+| DDNS（ddns-go）                     | 开            | 开                    | **关**（内网主路由用不到）                       |
+| SSL 证书（acme 一整套）                  | **无**        | **无**                | **无**（整套停用，源码 Makefile 里也写着）         |
+| 主题                                 | argon         | argon                 | argon                                 |
 
 > 文件系统与分区工具那两行是跟着 USB 一起走的：ZN-M2 既没有 USB 口也没有任何外接盘位，  
 > 系统本身就跑在 NAND（ubifs）上，留着 ext4/f2fs/exfat 和那套分区工具只是白占内核体积与 NAND。  
 > 亚瑟有 USB 口，这些东西全部保留在它自己那两份配置里（GENERAL.txt 里已下放，不会反向塞回 M2）。  
 > ▲注意：ZNM2 那份里这些项写的是**显式 `=n`** 而不是注释掉 —— 它们大多在 target 的  
 > `DEFAULT_PACKAGES` 里，注释掉等于用默认值、照样编进固件（踩过，详见下面 GENERAL 纪律段）。
+
+### 主题为什么是 argon（2026-10-09 定）
+
+`sorted by 占用 / 稳定性`：两者实际体积差不多 —— argon 的 ipk 实测 389KB，aurora 的
+css(185KB) + 图片(122KB) + 字体(23KB) + 补丁(12KB) 约 350KB，**差别不在大小**，所以按下述两条定：
+
+| | argon（留下） | aurora（去掉） |
+| --- | --- | --- |
+| 技术栈 | 传统 LuCI 模板 + 手写 CSS，对不上最多错位 | Vite + Tailwind 预编译 bundle，DOM 变了容易白屏 |
+| 维护现状 | jerrykuku 一直在更新（2026-10 仍有提交，5.5k star） | 580 star 的新项目，2026-09 最后提交 |
+
+主题由 `Scripts/Settings.sh` 按 workflow 的 `WRT_THEME` 注入；`luci-app-<主题>-config`（外观自定义页）
+已停用 —— 主路由用不上，它还会往固件里塞壁纸素材。`luci-theme-aurora` / `luci-app-aurora-config`
+在 GENERAL.txt 里写成**显式 `=n`**（不是注释掉，理由同上）。
 
 ### 插件分三档：`=y` / `=m` / `=n`
 
