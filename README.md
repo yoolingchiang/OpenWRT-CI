@@ -69,7 +69,9 @@ Config/
 
 > 文件系统与分区工具那两行是跟着 USB 一起走的：ZN-M2 既没有 USB 口也没有任何外接盘位，  
 > 系统本身就跑在 NAND（ubifs）上，留着 ext4/f2fs/exfat 和那套分区工具只是白占内核体积与 NAND。  
-> 亚瑟有 USB 口，这些东西全部保留在它自己那两份配置里（GENERAL.txt 里已下放，不会反向塞回 M2）。
+> 亚瑟有 USB 口，这些东西全部保留在它自己那两份配置里（GENERAL.txt 里已下放，不会反向塞回 M2）。  
+> ▲注意：ZNM2 那份里这些项写的是**显式 `=n`** 而不是注释掉 —— 它们大多在 target 的  
+> `DEFAULT_PACKAGES` 里，注释掉等于用默认值、照样编进固件（踩过，详见下面 GENERAL 纪律段）。
 
 ### 插件分三档：`=y` / `=m` / `=n`
 
@@ -129,6 +131,21 @@ wolultra 五个 `=n`（M2 是 128MB NAND，刻意做减法），**一个都没�
 `make defconfig` 之前扫描「机型层与 GENERAL 都写了、但取值不同」的 key，一旦有就打  
 `::error::` 列出每个 key 的取值对照并**中断编译**。想保留冲突就在 PRIVATE 层显式写值（见下），  
 那条会降级成 `::notice::` 放行。
+
+> ⚠️ **把配置行注释掉 ≠ 关掉这个包**（第三类静默偏差，2026-10-09 两版固件对比实证）
+>
+> `target/linux/qualcommax/Makefile` 的 `DEFAULT_PACKAGES` 自带一整套：
+> `automount` `e2fsprogs` `f2fs-tools` `kmod-fs-ext4` `kmod-fs-f2fs` `kmod-usb3`
+> `kmod-usb-dwc3` `kmod-usb-dwc3-qcom` `kmod-usb-serial-qualcomm` …
+> （`luci` `cpufreq` `autocore` `uboot-envtools` 也在里面）。
+> 机型配置里把行**注释掉** = 这一行不存在 = 用 target 的默认值，包照样进固件。
+>
+> 实证：26.10.09 两版 ZNM2 固件的 manifest 对比 —— 注释掉的 `kmod-usb3` / `kmod-fs-ext4` /
+> `automount` / `e2fsprogs` 一个都没少；而**不在** `DEFAULT_PACKAGES` 里的 `blkid` / `fdisk` /
+> `parted` / `exfat-fsck` / `exfat-mkfs` / `sfdisk` 确实消失了（连带 `libfdisk1` /
+> `libmount1` / `libparted` / `musl-fts` 也没了）。
+>
+> **想真正去掉，唯一办法是显式写 `=n`。** ZNM2 那份配置里那一整批就是这么写的。
 
 ### 完整加载链（越靠后优先级越高）
 
