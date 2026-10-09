@@ -196,29 +196,57 @@ CONFIG_PACKAGE_proto-bonding=y
 #coremark（跑分）不装：M2 上偶尔跑一次用命令行版就行，不值得常驻。
 
 #======================= 七、多 WAN 负载均衡 / 故障转移 =======================
-#M2 当主路由，双拨/多线场景用得上
-CONFIG_PACKAGE_mwan3=y
-CONFIG_PACKAGE_luci-app-mwan3=y
+#★整节停用：编不出来。luci-app-mwan3 依赖 mwan3，但 VIKINGYFY/immortalwrt(main) 的
+#  包树里没有 mwan3 这个包 —— 写了 CONFIG_PACKAGE_mwan3=y 也没用，Kconfig 里根本没这个
+#  符号，defconfig 会把它丢掉，于是 mwan3 不会被编译、也进不了 apk 索引，
+#  最后在 package/install 阶段炸：
+#      ERROR: unable to select packages: mwan3 (no such package): required by: luci-app-mwan3
+#  要恢复：先确认源里真的有 mwan3（feeds/packages/net/mwan3），再一起把下面两行打开。
+#CONFIG_PACKAGE_mwan3=y
+#CONFIG_PACKAGE_luci-app-mwan3=y
 
 #======================= 八、插件清单（M2 侧，比亚瑟克制）=======================
-#科学上网只用 nikki
+#★本机是 128MB NAND，取舍标准比亚瑟严格得多，同样分三档：
+#    8.1  =y  主路由日常必需，直接进固件（数量刻意压到最少）
+#    8.2  =m  冷门 / 用不上但可能有一天想要的，只编包不进固件
+#    8.3  =n  明确不要（见第九节）
+#参考基准：darkrain88 给 zn_m2 只留了 nikki 一个设备级包（它的 GENERAL 虽然写着一堆 =m，
+#  但没被设备单独挑出来的都不会进这台设备的固件）。我们比它多留了几项主路由要用的。
+#======================= 8.1 日常刚需：直接进固件 =======================
+#科学上网只用 nikki（openclash 与它抢 7890 端口和防火墙规则，同时装大概率打架）
 CONFIG_PACKAGE_luci-app-nikki=y
 CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
-#常用
+#DDNS：主路由要有公网域名回连能力，这一项体积很小
 CONFIG_PACKAGE_luci-app-ddns-go=y
-CONFIG_PACKAGE_luci-app-netwizard=y
-#easytier 改 =m：编成 apk 但不打进固件，M2 的 128MB NAND 省下 ~8MB，需要时 apk add 再装。
-#  （亚瑟那份同样改成了 =m，apk 由 WRT-CORE.yml 收进 release 的 packages/ 目录。）
-CONFIG_PACKAGE_luci-app-easytier=m
+#autoreboot：参考配置里共识度最高的一项（7 份都带），定时重启兜底
 CONFIG_PACKAGE_luci-app-autoreboot=y
-CONFIG_PACKAGE_luci-app-natmapt=y
+#upnp：内网设备自动开端口，主路由常规功能
 CONFIG_PACKAGE_luci-app-upnp=y
-CONFIG_PACKAGE_luci-app-mini-diskmanager=y
+
+#======================= 8.2 冷门 / 以后也许会用：=m，只编包不进固件 =======================
+#改 =m 而不是 =n 的理由：编出来的 apk 会被 WRT-CORE.yml 收进 Release 的 Packages-extra 包，
+#  哪天真需要时 apk add 装上即可，不必为它重编一遍固件 —— 对 NAND 紧张又不想失去可能性的
+#  M2 来说，这一档最划算（不占固件空间，但仍留了后路）。
+#  netwizard：首次上手的向导，配过一次之后基本不再打开
+CONFIG_PACKAGE_luci-app-netwizard=m
+#  natmapt：NAT 打洞自动端口映射，只在中转、内网穿透场景用得上
+CONFIG_PACKAGE_luci-app-natmapt=m
+#  mini-diskmanager：磁盘分区管理。M2 的 USB 存储相关包已在第四节多数关闭，
+#    真要挂盘管理分区时再装它
+CONFIG_PACKAGE_luci-app-mini-diskmanager=m
+#★关于 ttyd：网页终端在救砖场景挺有用，一度想放在 =m 这一档。但第九节「小工具：非必要」
+#  里已经写死了 luci-app-ttyd=n，同一文件里后出现的覆盖先出现的，这里写 =m 也压不过它。
+#  M2 按「空间优先」取舍，维持 =n；真要网页终端时改第九节那一行即可。
 
 #======================= 九、减法：NAND 装不下的 / 用不上的 =======================
+#★本节之前形同虚设：加载顺序是「机型配置 → GENERAL.txt」，GENERAL 在后会覆盖机型层，
+#  它里面写的 samba4 / partexp / gecoosac / wolultra / statistics 五个 =y 会把这里对应的
+#  =n 全部翻回 =y —— 也就是说 M2 的减法一句都没生效，这些包照样进固件。
+#  现已把这些「并非三份配置一致同意」的包从 GENERAL 下放到各机型层（详见 GENERAL.txt 的
+#  「为什么这里越来越短」一节），本节的 =n 才真正落地。改动前后对比：
+#      改前实际进固件的 luci 包：20 个（配置看着却只有 7 个 =y，对不上就是因为这个坑）
+#      改后实际进固件的 luci 包：见本文件第八节 8.1 那 5 个 + GENERAL 里的少数几项
 #---- 存储类服务与工具：NAND 空间紧张，全关 ----
-#★GENERAL.txt 里可能有 luci-app-samba4=y 与 luci-app-partexp=y（那层是全局的），
-#  必须在这里显式减掉，否则 NAND 会被塞满。
 CONFIG_PACKAGE_luci-app-samba4=n
 #注意包名是 samba4-server，不带 luci-app 前缀 —— 「luci-app-samba4-server」这个包不存在。
 CONFIG_PACKAGE_samba4-server=n

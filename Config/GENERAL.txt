@@ -2,7 +2,8 @@
 #这样上游更新时可以整份替换（原先为 USB-WAN/CPE 补的 qmi-wwan 与 kmod-usb-xhci 已移除，
 #该玩法暂不启用；需要时按 USB-WAN.md 的说明加回）。
 #本文件同时被 Scripts/Packages.sh 读取，决定要不要 clone 第三方插件源。
-#单台设备的取舍请改 Config/<设备>-Override.txt（追加在最后，优先级更高）。
+#单台设备的取舍请改 Config/<设备>-<WiFi|noWiFi>.txt —— 那里是各设备自包含清单，自己写全。
+#★注意不是反过来：本文件在机型配置之后加载，这里的 =y 会压掉机型层的 =n（详见下文「增加插件」段）。
 
 #科学插件调整
 #homeproxy：不用。亚瑟走 nikki + openclash 双栈，M2 只用 nikki（见各机型配置的插件段）。
@@ -11,17 +12,25 @@
 #  的实际顺序相反）。只在机型层写 =n 压不住，homeproxy 照样进固件。
 CONFIG_PACKAGE_luci-app-homeproxy=n
 #增加插件
+#★本段只放「三份机型配置一致同意要」的包。凡是有一份机型要 =n 的，统统下放到机型层，
+#  不能留在这里 —— 原因见下面「为什么这里越来越短」。
 CONFIG_PACKAGE_luci-app-autoreboot=y
-CONFIG_PACKAGE_luci-app-gecoosac=y
-CONFIG_PACKAGE_luci-app-mini-diskmanager=y
-CONFIG_PACKAGE_luci-app-natmapt=y
-CONFIG_PACKAGE_luci-app-partexp=y
-CONFIG_PACKAGE_luci-app-samba4=y
 CONFIG_PACKAGE_luci-app-upnp=y
-CONFIG_PACKAGE_luci-app-wolultra=y
 #删除插件
 CONFIG_PACKAGE_luci-app-attendedsysupgrade=n
 CONFIG_PACKAGE_luci-app-wol=n
+#
+#======================= 为什么这里越来越短（改动记录，别改回去）=======================
+#原先这里还写着 gecoosac / mini-diskmanager / natmapt / partexp / samba4 / wolultra 六个 =y。
+#坑在于加载顺序：Packages.sh 的加载链是「机型配置 → GENERAL」，GENERAL 在后加载，
+#同一 CONFIG_PACKAGE_* key 后出现的覆盖先出现的 —— 所以机型层写的 =n 会被这里的 =y 翻回 =y。
+#实测后果：ZNM2-noWiFi.txt 里明明写了 gecoosac / partexp / samba4 / statistics / wolultra
+#  五个 =n（M2 是 128MB NAND，刻意做减法），一个都没生效，照样进固件 —— 配置看着像只装
+#  7 个 luci 包，实际装了 20 个。反过来 JDCloud 两份因为本来就都要这些包，看起来「没问题」，
+#  所以这个 bug 只在存储最紧张的 M2 上暴露。
+#处理办法：把这 6 个包从 GENERAL 删掉，各自写进需要的机型配置（JDCloud 两份保留 =y 或改 =m，
+#  ZNM2 写 =n）。这样「谁要谁不要」在同一个文件里一次决定，不再有跨层扯皮。
+#★以后往本段加 =y 之前，先确认三份机型配置都要它；只要有一份要 =n 或 =m，就别写在这。
 
 #参数调整
 CONFIG_CCACHE=y
@@ -34,16 +43,16 @@ CONFIG_TARGET_MULTI_PROFILE=y
 CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 CONFIG_TARGET_ROOTFS_INITRAMFS=n
 #内核调整
-CONFIG_PACKAGE_kmod-ata-ahci=y
-CONFIG_PACKAGE_kmod-ata-core=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-ata-ahci=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-ata-core=y
 CONFIG_PACKAGE_kmod-bonding=y
 CONFIG_PACKAGE_kmod-dsa=y
 CONFIG_PACKAGE_kmod-dummy=y
 #btrfs：亚瑟是 eMMC（ext4/f2fs）、M2 是 NAND（ubifs），都用不上，砍掉省 ~6MB
 #  （kmod + btrfs-progs）。想恢复：把下面两行改回 =y。
-CONFIG_PACKAGE_kmod-fs-btrfs=n
-CONFIG_PACKAGE_btrfs-progs=n
-CONFIG_PACKAGE_kmod-fs-ksmbd=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-fs-btrfs=n
+#↓已下放机型层 CONFIG_PACKAGE_btrfs-progs=n
+#↓已下放机型层 CONFIG_PACKAGE_kmod-fs-ksmbd=y
 CONFIG_PACKAGE_kmod-fuse=y
 CONFIG_PACKAGE_kmod-inet-diag=y
 CONFIG_PACKAGE_kmod-inet-mptcp-diag=y
@@ -80,13 +89,13 @@ CONFIG_PACKAGE_kmod-nft-queue=y
 CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
 CONFIG_PACKAGE_kmod-nft-xfrm=y
-CONFIG_PACKAGE_kmod-nvme=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-nvme=y
 #ovpn-backports：不跑 OpenVPN，砍掉。想恢复：改回 =y。
-CONFIG_PACKAGE_kmod-ovpn-backports=n
-CONFIG_PACKAGE_kmod-sound-core=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-ovpn-backports=n
+#↓已下放机型层 CONFIG_PACKAGE_kmod-sound-core=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-usb-audio=y
+#↓已下放机型层 CONFIG_PACKAGE_kmod-usb-audio=y
 CONFIG_PACKAGE_kmod-usb-core=y
 CONFIG_PACKAGE_kmod-usb-dwc3=y
 CONFIG_PACKAGE_kmod-usb-ehci=y
@@ -120,8 +129,8 @@ CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_autocore=y
 CONFIG_PACKAGE_automount=y
 CONFIG_PACKAGE_blkid=y
-CONFIG_PACKAGE_cfdisk=y
-CONFIG_PACKAGE_cgdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_cfdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_cgdisk=y
 #coremark：这行目前是无效的 —— 它正好在「被 smpackage 同名顶掉」的 119 个包名单里：
 #  官方 packages feed 的 coremark 被 WRT-CORE.yml 的清理逻辑删掉，smpackage 版又因为
 #  feed 优先级（packages 在前）装不上，结果这个包从源码树里消失。dark 那份能装上
@@ -134,12 +143,12 @@ CONFIG_PACKAGE_dmesg=y
 CONFIG_PACKAGE_exfat-fsck=y
 CONFIG_PACKAGE_exfat-mkfs=y
 CONFIG_PACKAGE_fdisk=y
-CONFIG_PACKAGE_gdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_gdisk=y
 CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_iperf3=y
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_libimobiledevice=y
-CONFIG_PACKAGE_libnvme=y
+#↓已下放机型层 CONFIG_PACKAGE_libnvme=y
 CONFIG_PACKAGE_lsblk=y
 CONFIG_PACKAGE_luci-base=y
 CONFIG_PACKAGE_luci-compat=y
@@ -147,17 +156,17 @@ CONFIG_PACKAGE_luci-lib-base=y
 CONFIG_PACKAGE_luci-lib-ipkg=y
 CONFIG_PACKAGE_luci-lua-runtime=y
 CONFIG_PACKAGE_luci-proto-relay=y
-CONFIG_PACKAGE_mmc-utils=y
+#↓已下放机型层 CONFIG_PACKAGE_mmc-utils=y
 CONFIG_PACKAGE_nand-utils=y
-CONFIG_PACKAGE_nvme-cli=y
+#↓已下放机型层 CONFIG_PACKAGE_nvme-cli=y
 CONFIG_PACKAGE_openssh-keygen=y
 CONFIG_PACKAGE_openssh-sftp-server=y
 CONFIG_PACKAGE_openssl-util=y
 CONFIG_PACKAGE_proto-bonding=y
-CONFIG_PACKAGE_sfdisk=y
-CONFIG_PACKAGE_sgdisk=y
-CONFIG_PACKAGE_smartmontools=y
-CONFIG_PACKAGE_smartmontools-drivedb=y
+#↓已下放机型层 CONFIG_PACKAGE_sfdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_sgdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_smartmontools=y
+#↓已下放机型层 CONFIG_PACKAGE_smartmontools-drivedb=y
 CONFIG_PACKAGE_stuntman-client=y
 CONFIG_PACKAGE_usb-modeswitch=y
 CONFIG_PACKAGE_usbmuxd=y
@@ -200,14 +209,19 @@ CONFIG_PACKAGE_acme-common=y
 CONFIG_PACKAGE_luci-app-acme=y
 
 #---- 流量统计：WAN 流量按时 / 日 / 月统计，重启不丢 ----
+#保留理由：vnstat2 只在整点写一次数据库，128MB NAND 的 M2 也扛得住，三份配置都认可。
 CONFIG_PACKAGE_vnstat2=y
 CONFIG_PACKAGE_vnstati2=y
 CONFIG_PACKAGE_luci-app-vnstat2=y
 
 #---- 负载曲线：CPU / 内存 / 接口 / 负载的历史图表 ----
-CONFIG_PACKAGE_collectd=y
-CONFIG_PACKAGE_rrdtool1=y
-CONFIG_PACKAGE_luci-app-statistics=y
+#★已下放到机型层，不要在这里恢复 =y。原因同「为什么这里越来越短」那一节：
+#  这里写 =y 会把 ZNM2-noWiFi.txt 的 statistics/collectd/rrdtool1 =n 全部翻回 =y，
+#  而 M2 恰恰最装不起它（collectd 每 30 秒写一次 rrd，128MB NAND 空间与磨损都吃不消）。
+#  现在 JDCloud 两份按 =m 编（留在 Release 里按需 apk add），M2 写 =n 直接不编。
+#CONFIG_PACKAGE_collectd=y
+#CONFIG_PACKAGE_rrdtool1=y
+#CONFIG_PACKAGE_luci-app-statistics=y
 
 #---- 主题：Aurora（dark 那份用的）。常用主题仍是 argon，由 workflow 的 WRT_THEME 决定 ----
 CONFIG_PACKAGE_luci-theme-aurora=y
