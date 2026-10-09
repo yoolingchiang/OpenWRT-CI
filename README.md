@@ -59,9 +59,9 @@ Config/
 | Docker 全套                          | 关            | **`=m`**（按需 apk add） | **关**（512MB + NAND 跑不动）               |
 | btrfs / NVMe / ATA / smartmontools | 开            | 开                    | **关**                                 |
 | samba4 / diskman / partexp         | 开            | 开                    | **关**                                 |
-| mwan3（多 WAN）                       | 无            | 无                    | **停用**（当前源里没有 mwan3 这个包，开了会在最后一步中断编译） |
+| 多 WAN（mwan3）                       | 无            | 无                    | **已移除**（源里没有这个包 + 用不到，整节删掉）         |
 | zram-swap                          | 开            | 开                    | 开（512MB 刚需）                           |
-| USB 全家桶                            | 开            | 开                    | 开（两台都有 USB 口）                         |
+| USB 控制器 / 存储 / 工具                | 开            | 开（还带 USB 网卡驱动）      | **关**（ZN-M2 没有 USB 口，装了也用不上）           |
 | coremark / 小工具                     | 开            | 开                    | **关**（NAND 省空间）                       |
 
 ### 插件分三档：`=y` / `=m` / `=n`
