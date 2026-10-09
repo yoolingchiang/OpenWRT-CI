@@ -59,9 +59,17 @@ Config/
 | Docker 全套                          | 关            | **`=m`**（按需 apk add） | **关**（512MB + NAND 跑不动）               |
 | btrfs / NVMe / ATA / smartmontools | 开            | 开                    | **关**                                 |
 | samba4 / diskman / partexp         | 开            | 开                    | **关**                                 |
+| 多 WAN（mwan3）                       | 无            | 无                    | **已移除**（源里没有这个包 + 用不到，整节删掉）         |
 | zram-swap                          | 开            | 开                    | 开（512MB 刚需）                           |
 | USB 控制器 / 存储 / 工具                | 开            | 开（还带 USB 网卡驱动）      | **关**（ZN-M2 没有 USB 口，装了也用不上）           |
+| 4G 网卡模式切换（usb-modeswitch）        | 关（网卡驱动没开，切了也没用） | **开**（配合上面那组 USB 网卡）  | 无（没有 USB 口）                          |
+| 文件系统 ext4/f2fs/vfat/exfat          | 开            | 开                    | **关**                                 |
+| 分区格式化工具（blkid/lsblk/fdisk/parted/e2fsprogs…） | 开            | 开                    | **关**（没有外接盘位，配套的也一起省掉）              |
 | coremark / 小工具                     | 开            | 开                    | **关**（NAND 省空间）                       |
+
+> 文件系统与分区工具那两行是跟着 USB 一起走的：ZN-M2 既没有 USB 口也没有任何外接盘位，  
+> 系统本身就跑在 NAND（ubifs）上，留着 ext4/f2fs/exfat 和那套分区工具只是白占内核体积与 NAND。  
+> 亚瑟有 USB 口，这些东西全部保留在它自己那两份配置里（GENERAL.txt 里已下放，不会反向塞回 M2）。
 
 ### 插件分三档：`=y` / `=m` / `=n`
 
@@ -79,6 +87,29 @@ openclash / partexp / samba4 / ddns-go / gecoosac / easytier / lucky 全是 `=m`
 
 > ⚠️ **`=m` 的包也会被 DepCheck 检查依赖**。源码迁移 apk 之后缺依赖是致命错误（不是警告），  
 > `=m` 的包缺依赖一样会在 `package/install` 阶段炸掉整个编译。加 `=m` 之前先跑一次 WRT-TEST。
+
+### 依赖预检（DepCheck）与它的误报
+
+`Scripts/DepCheck.sh` 在 `make defconfig` 之后跑，提前把 apk 阶段才会暴露的「依赖包不存在」列出来。
+它只告警、永不阻断（退出码恒为 0）—— 误报毁掉一次完整编译的代价远高于漏报。
+
+已经修掉的三类误报（都不是配置的问题，别去改 Config）：
+
+| 报错长这样 | 真实原因 | 处理 |
+| ---------- | -------- | ---- |
+| `xxx -> NSS_DRV_IPV6_ENABLE` | 那是 Kconfig 配置开关，不是包名 | 全大写 + 下划线的 token 直接跳过 |
+| `apk-openssl -> wget-any` | `wget-any` 是**虚拟包**，OpenWrt 写成 `Provides: @wget-any`（带 `@`），依赖方写成 `+wget-any`（不带 `@`），两边对不上 | `@name` 额外登记一份 `name` |
+| `luci-app-acme -> acme` | 源里确实没有 `acme` 这个空壳 meta 包，但**编译验证过无害** | 见下面的豁免清单 |
+
+最后一类的实证：26.10.09 那份 ZNM2 固件的 manifest 里 `acme-acmesh` / `acme-acmesh-dnsapi` /
+`acme-common` / `luci-app-acme` / `luci-i18n-acme-zh-cn` 五项全在，编译正常跑完 —— 证书功能完整，
+缺的只是一个 0.8KB 的 meta 包（功能本体是 `acme-acmesh` + `acme-common`）。
+`CONFIG_PACKAGE_acme=y` 那行已注释停用，跟当初 mwan3 一个性质。
+
+**`Config/DepCheck-ignore.txt` 是豁免清单，不是垃圾桶。** 准入标准只有一条硬的：
+完整编译跑完、出了固件、相关功能在 manifest 里确实装上了，才允许写进去；
+`mwan3` 那种会在 `package/install` 阶段炸掉的绝对不许放 —— 它当时炸的就是
+`ERROR: unable to select packages: mwan3 (no such package)`。清单里每条都写了实证依据和日期。
 
 ### GENERAL.txt 的纪律（踩过坑，别改回去）
 
@@ -154,7 +185,9 @@ wolultra 五个 `=n`（M2 是 128MB NAND，刻意做减法），**一个都没�
 ```
 .github/workflows/  WRT-CORE.yml 是唯一干活的，其余全是薄壳
 Config/             GENERAL.txt + 三份设备配置 + TEST.txt
+                    DepCheck-ignore.txt 依赖预检的豁免清单（准入标准很严，见文件头）
 Scripts/            Packages.sh 拉包 / Handles.sh 修 feeds / Settings.sh 改系统设置
-                    DepCheck.sh 依赖预检 / USB-WAN.sh 暂未启用（见 Handles.sh 注释）
+                    DepCheck.sh 依赖预检（defconfig 之后跑，只告警不阻断）
+                    USB-WAN.sh 暂未启用（见 Handles.sh 注释）
 USB-WAN.md          USB 网卡 WAN 玩法，需要时按它恢复
 ```
