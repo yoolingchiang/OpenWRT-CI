@@ -128,31 +128,13 @@ CONFIG_PACKAGE_kmod-fs-ext4=y
 CONFIG_PACKAGE_kmod-fs-f2fs=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
-#---- USB：只留控制器与存储（接 U 盘），网卡驱动整组关闭 ----
-#不做 USB-WAN、也不接 USB 网卡当 WAN；恢复方法见 GENERAL.txt 同名段。
-CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-usb-core=y
-CONFIG_PACKAGE_kmod-usb-dwc3=y
-CONFIG_PACKAGE_kmod-usb-ehci=y
-CONFIG_PACKAGE_kmod-usb-ohci=y
-CONFIG_PACKAGE_kmod-usb-uhci=y
-#CONFIG_PACKAGE_kmod-usb-net=y
-#CONFIG_PACKAGE_kmod-usb-net-asix=y
-#CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
-#CONFIG_PACKAGE_kmod-usb-net-cdc-eem=y
-#CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
-#CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
-#CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
-#CONFIG_PACKAGE_kmod-usb-net-cdc-subset=y
-#CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
-#CONFIG_PACKAGE_kmod-usb-net-ipheth=y
-#CONFIG_PACKAGE_kmod-usb-net-rndis=y
-#CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
-#CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
-#CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y
-CONFIG_PACKAGE_kmod-usb-storage=y
-CONFIG_PACKAGE_kmod-usb-storage-extras=y
-CONFIG_PACKAGE_kmod-usb-storage-uas=y
+#---- USB：整组不装 ----
+#★兆能 ZN-M2 没有 USB 口，控制器 / 存储 / 网卡 / 工具全部不装 —— 装了也用不上，
+#  白占 NAND 空间与内核体积。
+#  京东云亚瑟有 USB 口，那份配置里保留了 usb3 / dwc3 / ehci / ohci / uhci / usb-storage*。
+#  ▲GENERAL.txt 里这些键也已下放到机型层（否则它后加载会把 USB 反向塞回 M2，
+#    这是踩过的坑）。要加回来先确认 GENERAL 里没有同名 =y。
+#  万一以后要在 M2 上用 USB（比如 USB 网卡做 WAN），按 USB-WAN.md 把驱动加回来。
 
 #======================= 五、存储与分区工具（留在 NAND 上够用的）=======================
 CONFIG_PACKAGE_block-mount=y
@@ -168,9 +150,7 @@ CONFIG_PACKAGE_exfat-mkfs=y
 CONFIG_PACKAGE_nand-utils=y
 CONFIG_PACKAGE_autocore=y
 CONFIG_PACKAGE_automount=y
-CONFIG_PACKAGE_usbmuxd=y
-CONFIG_PACKAGE_libimobiledevice=y
-CONFIG_PACKAGE_usbutils=y
+#usbmuxd / libimobiledevice（iPhone USB 共享）/ usbutils（lsusb）不装：M2 没有 USB 口。
 #gdisk/cgdisk/sgdisk（GPT 分区）、mmc-utils、nvme-cli/smartmontools 不装：
 #M2 是 NAND（无 eMMC/NVMe），这些工具用不上。
 
@@ -194,16 +174,6 @@ CONFIG_PACKAGE_openssl-util=y
 CONFIG_PACKAGE_stuntman-client=y
 CONFIG_PACKAGE_proto-bonding=y
 #coremark（跑分）不装：M2 上偶尔跑一次用命令行版就行，不值得常驻。
-
-#======================= 七、多 WAN 负载均衡 / 故障转移 =======================
-#★整节停用：编不出来。luci-app-mwan3 依赖 mwan3，但 VIKINGYFY/immortalwrt(main) 的
-#  包树里没有 mwan3 这个包 —— 写了 CONFIG_PACKAGE_mwan3=y 也没用，Kconfig 里根本没这个
-#  符号，defconfig 会把它丢掉，于是 mwan3 不会被编译、也进不了 apk 索引，
-#  最后在 package/install 阶段炸：
-#      ERROR: unable to select packages: mwan3 (no such package): required by: luci-app-mwan3
-#  要恢复：先确认源里真的有 mwan3（feeds/packages/net/mwan3），再一起把下面两行打开。
-#CONFIG_PACKAGE_mwan3=y
-#CONFIG_PACKAGE_luci-app-mwan3=y
 
 #======================= 八、插件清单（M2 侧，比亚瑟克制）=======================
 #★本机是 128MB NAND，取舍标准比亚瑟严格得多，同样分三档：
@@ -231,8 +201,8 @@ CONFIG_PACKAGE_luci-app-upnp=y
 CONFIG_PACKAGE_luci-app-netwizard=m
 #  natmapt：NAT 打洞自动端口映射，只在中转、内网穿透场景用得上
 CONFIG_PACKAGE_luci-app-natmapt=m
-#  mini-diskmanager：磁盘分区管理。M2 的 USB 存储相关包已在第四节多数关闭，
-#    真要挂盘管理分区时再装它
+#  mini-diskmanager：磁盘分区管理。M2 没有 USB 口、也不挂外部盘，平时用不上，
+#    真要管理分区时再装它
 CONFIG_PACKAGE_luci-app-mini-diskmanager=m
 #★关于 ttyd：网页终端在救砖场景挺有用，一度想放在 =m 这一档。但第九节「小工具：非必要」
 #  里已经写死了 luci-app-ttyd=n，同一文件里后出现的覆盖先出现的，这里写 =m 也压不过它。
@@ -258,7 +228,7 @@ CONFIG_PACKAGE_kmod-nvme=n
 CONFIG_PACKAGE_kmod-ata-ahci=n
 CONFIG_PACKAGE_kmod-ata-core=n
 CONFIG_PACKAGE_kmod-sound-core=n
-CONFIG_PACKAGE_kmod-usb-audio=n
+#kmod-usb-audio 不再单独写 =n：USB 整组已不装（见第四节），写了也是重复
 CONFIG_PACKAGE_kmod-ovpn-backports=n
 CONFIG_PACKAGE_libnvme=n
 CONFIG_PACKAGE_nvme-cli=n
