@@ -207,16 +207,22 @@ CONFIG_PACKAGE_coreutils-timeout=y
 #  否则 openclash 启动时找不到 /bin/bash。
 CONFIG_PACKAGE_bash=y
 
-#---- SSL 证书：自动申请 / 续签 Let's Encrypt，支持 DNS API 验证 ----
-#▲acme 这个空壳包在当前源码树（VIKINGYFY/immortalwrt）里已经不存在了 —— 写了 defconfig 会
-#  静默丢弃（跟当初 mwan3 一个性质）。功能本体是 acme-acmesh + acme-common，luci-app-acme
-#  也照常编译（26.10.09 那份 ZNM2 固件的 manifest 里这几项都在），证书功能是完整的，
-#  缺的只是一个 0.8KB 的 meta 包。恢复：哪天源里又有 acme 了，把下面这行取消注释。
+#---- SSL 证书（acme）：整套不用 ----
+#★2026-10-09 定：三份配置都不要。acme 是给「路由器自己去 Let's Encrypt 签公网证书」用的，
+#  实际场景（内网主路由，没有对外发布的 HTTPS 服务）用不到。而且它一装就是一整串：
+#  acme-acmesh / acme-acmesh-dnsapi / acme-common / luci-app-acme / luci-i18n-acme-zh-cn，
+#  对 128MB NAND 的 M2 是纯负担。
+#  ▲这里用「注释停用」是安全的 —— 这几个包都不在 target 的 DEFAULT_PACKAGES 里
+#    （对照过 target/linux/qualcommax/Makefile 与 include/target.mk），也没有别的东西依赖它们，
+#    注释掉 = 真的不装。跟磁盘那批必须写 =n 的情况不一样。
+#    恢复：把下面五行取消注释。
+#（附注：其中 acme 这个空壳包在当前源码树里已经不存在了 —— 写了 defconfig 会静默丢弃，
+#  功能本体是 acme-acmesh + acme-common。真要恢复时先确认源里 acme 还在不在。）
 #CONFIG_PACKAGE_acme=y
-CONFIG_PACKAGE_acme-acmesh=y
-CONFIG_PACKAGE_acme-acmesh-dnsapi=y
-CONFIG_PACKAGE_acme-common=y
-CONFIG_PACKAGE_luci-app-acme=y
+#CONFIG_PACKAGE_acme-acmesh=y
+#CONFIG_PACKAGE_acme-acmesh-dnsapi=y
+#CONFIG_PACKAGE_acme-common=y
+#CONFIG_PACKAGE_luci-app-acme=y
 
 #---- 流量统计：WAN 流量按时 / 日 / 月统计，重启不丢 ----
 #保留理由：vnstat2 只在整点写一次数据库，128MB NAND 的 M2 也扛得住，三份配置都认可。
@@ -233,7 +239,20 @@ CONFIG_PACKAGE_luci-app-vnstat2=y
 #CONFIG_PACKAGE_rrdtool1=y
 #CONFIG_PACKAGE_luci-app-statistics=y
 
-#---- 主题：Aurora（dark 那份用的）。常用主题仍是 argon，由 workflow 的 WRT_THEME 决定 ----
-CONFIG_PACKAGE_luci-theme-aurora=y
-CONFIG_PACKAGE_luci-app-aurora-config=y
-CONFIG_PACKAGE_luci-i18n-aurora-config-zh-cn=y
+#---- 主题：一律 argon，Aurora 显式关掉 ----
+#▲为什么写 =n 而不是注释掉：注释掉 = 这一行不存在 = 由 defconfig 自行决定，
+#  有被拉回来的风险（磁盘那批 DEFAULT_PACKAGES 的包就是这么踩的，见 README）。这里明确规定 =n。
+#★为什么留 argon 而不是 aurora（2026-10-09 定）：两者实际占用差不多 —— argon 的 ipk 实测
+#  389KB，aurora 的 css(185KB) + 图片(122KB) + 字体(23KB) + 补丁(12KB) 约 350KB，差别不在大小。
+#  真正的差别是技术栈与成熟度：
+#    argon  传统 LuCI 模板 + 手写 CSS，跟 LuCI 版本对不上时最多错位，不容易整体失效；
+#           作者 jerrykuku 一直维护（2026-10-09 仍有提交，5.5k star），是社区事实标准。
+#    aurora 用 Vite + Tailwind CSS 预编译成 bundle（CSS 185KB 就是这么来的），
+#           DOM 结构对不上时更容易白屏；580 star 的新项目，2026-09 最后提交。
+#  对 M2 这种「刷一次想用半年不动它」的设备，稳定性权重远高于外观。
+#  argon 本体不用在这里写：由 Settings.sh 按 workflow 的 WRT_THEME=argon 注入
+#  （JDCloud-WiFi / JDCloud-noWiFi / ZNM2-noWiFi / WRT-TEST 四个 workflow 全是 argon）。
+#  恢复：把下面三行改成 =y（同时确认 Settings.sh 里 argon-config 那行是启用的）。
+CONFIG_PACKAGE_luci-theme-aurora=n
+CONFIG_PACKAGE_luci-app-aurora-config=n
+CONFIG_PACKAGE_luci-i18n-aurora-config-zh-cn=n
