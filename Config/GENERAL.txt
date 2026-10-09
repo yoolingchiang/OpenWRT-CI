@@ -104,9 +104,12 @@ CONFIG_PACKAGE_kmod-tun=y
 #  需要时按 USB-WAN.md 的说明加回。
 #  想恢复：把下面这些行取消注释。
 #
-#▲USB 控制器与存储（usb3 / dwc3 / ehci / ohci / uhci / usb-storage* / usbutils）也已下放机型层：
-#  **兆能 ZN-M2 没有 USB 口**，这些对它全是白占空间；京东云亚瑟有 USB 口，保留在自己那份
-#  配置里。所以这里不能再写 =y —— 写了 M2 就会被 GENERAL 反向塞回去（老毛病）。
+#▲USB 控制器与存储（usb3 / dwc3 / ehci / ohci / uhci / usb-storage* / usbutils / usb-modeswitch）
+#  也已下放机型层：**兆能 ZN-M2 没有 USB 口**，这些对它全是白占空间；京东云亚瑟有 USB 口，
+#  保留在自己那份配置里。所以这里不能再写 =y —— 写了 M2 就会被 GENERAL 反向塞回去（老毛病）。
+#▲磁盘 / 分区工具（automount / blkid / lsblk / fdisk / exfat-fsck / exfat-mkfs）同样下放机型层：
+#  M2 没有 USB 口、也没有任何外接盘位，它那份配置里文件系统支持（ext4 / f2fs / vfat / exfat）
+#  整组不装，这些配套工具留着没有意义；亚瑟要接 U 盘 / 移动硬盘，全留在自己那份配置里。
 #CONFIG_PACKAGE_kmod-usb-net=y
 #CONFIG_PACKAGE_kmod-usb-net-asix=y
 #CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
@@ -130,8 +133,8 @@ CONFIG_PACKAGE_kmod-veth=y
 CONFIG_PACKAGE_kmod-wireguard=y
 #组件调整
 CONFIG_PACKAGE_autocore=y
-CONFIG_PACKAGE_automount=y
-CONFIG_PACKAGE_blkid=y
+#↓已下放机型层 CONFIG_PACKAGE_automount=y
+#↓已下放机型层 CONFIG_PACKAGE_blkid=y
 #↓已下放机型层 CONFIG_PACKAGE_cfdisk=y
 #↓已下放机型层 CONFIG_PACKAGE_cgdisk=y
 #coremark：这行目前是无效的 —— 它正好在「被 smpackage 同名顶掉」的 119 个包名单里：
@@ -143,16 +146,16 @@ CONFIG_PACKAGE_coremark=y
 CONFIG_PACKAGE_cpufreq=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_dmesg=y
-CONFIG_PACKAGE_exfat-fsck=y
-CONFIG_PACKAGE_exfat-mkfs=y
-CONFIG_PACKAGE_fdisk=y
+#↓已下放机型层 CONFIG_PACKAGE_exfat-fsck=y
+#↓已下放机型层 CONFIG_PACKAGE_exfat-mkfs=y
+#↓已下放机型层 CONFIG_PACKAGE_fdisk=y
 #↓已下放机型层 CONFIG_PACKAGE_gdisk=y
 CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_iperf3=y
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_libimobiledevice=y
 #↓已下放机型层 CONFIG_PACKAGE_libnvme=y
-CONFIG_PACKAGE_lsblk=y
+#↓已下放机型层 CONFIG_PACKAGE_lsblk=y
 CONFIG_PACKAGE_luci-base=y
 CONFIG_PACKAGE_luci-compat=y
 CONFIG_PACKAGE_luci-lib-base=y
@@ -205,7 +208,11 @@ CONFIG_PACKAGE_coreutils-timeout=y
 CONFIG_PACKAGE_bash=y
 
 #---- SSL 证书：自动申请 / 续签 Let's Encrypt，支持 DNS API 验证 ----
-CONFIG_PACKAGE_acme=y
+#▲acme 这个空壳包在当前源码树（VIKINGYFY/immortalwrt）里已经不存在了 —— 写了 defconfig 会
+#  静默丢弃（跟当初 mwan3 一个性质）。功能本体是 acme-acmesh + acme-common，luci-app-acme
+#  也照常编译（26.10.09 那份 ZNM2 固件的 manifest 里这几项都在），证书功能是完整的，
+#  缺的只是一个 0.8KB 的 meta 包。恢复：哪天源里又有 acme 了，把下面这行取消注释。
+#CONFIG_PACKAGE_acme=y
 CONFIG_PACKAGE_acme-acmesh=y
 CONFIG_PACKAGE_acme-acmesh-dnsapi=y
 CONFIG_PACKAGE_acme-common=y

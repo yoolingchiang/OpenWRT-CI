@@ -121,13 +121,18 @@ CONFIG_PACKAGE_zram-swap=y
 CONFIG_PACKAGE_kmod-lib-lz4=y
 CONFIG_KERNEL_ZRAM_BACKEND_LZ4=y
 CONFIG_KERNEL_ZRAM_DEF_COMP_LZ4=y
-#---- 文件系统：只留 U 盘/移动硬盘常用的几个 ----
+#---- 文件系统：M2 一个都不装 ----
 #btrfs / ksmbd / NVMe / ATA / 声卡 / OVPN 这些不写 —— M2 是 NAND + 512MB，
 #既没有 NVMe 插槽、也跑不动网络存储服务，写上去只是白占空间。
-CONFIG_PACKAGE_kmod-fs-ext4=y
-CONFIG_PACKAGE_kmod-fs-f2fs=y
-CONFIG_PACKAGE_kmod-fs-vfat=y
-CONFIG_PACKAGE_kmod-fs-exfat=y
+#★ext4 / f2fs / vfat / exfat 也一并去掉：这四种是给「外接盘」准备的格式，
+#  而 **ZN-M2 没有 USB 口、也没有任何外接盘位**，系统本身就跑在 NAND（ubifs）上，
+#  装了只是白占内核体积和 NAND 空间。
+#  京东云亚瑟有 USB 口，这四种格式保留在它自己那两份配置里。
+#  恢复：把下面四行取消注释（先确认 GENERAL.txt 里没有同名 =y —— 有则以 GENERAL 为准）。
+#CONFIG_PACKAGE_kmod-fs-ext4=y
+#CONFIG_PACKAGE_kmod-fs-f2fs=y
+#CONFIG_PACKAGE_kmod-fs-vfat=y
+#CONFIG_PACKAGE_kmod-fs-exfat=y
 #---- USB：整组不装 ----
 #★兆能 ZN-M2 没有 USB 口，控制器 / 存储 / 网卡 / 工具全部不装 —— 装了也用不上，
 #  白占 NAND 空间与内核体积。
@@ -136,20 +141,24 @@ CONFIG_PACKAGE_kmod-fs-exfat=y
 #    这是踩过的坑）。要加回来先确认 GENERAL 里没有同名 =y。
 #  万一以后要在 M2 上用 USB（比如 USB 网卡做 WAN），按 USB-WAN.md 把驱动加回来。
 
-#======================= 五、存储与分区工具（留在 NAND 上够用的）=======================
-CONFIG_PACKAGE_block-mount=y
-CONFIG_PACKAGE_e2fsprogs=y
-CONFIG_PACKAGE_f2fs-tools=y
-CONFIG_PACKAGE_parted=y
-CONFIG_PACKAGE_blkid=y
-CONFIG_PACKAGE_lsblk=y
-CONFIG_PACKAGE_fdisk=y
-CONFIG_PACKAGE_sfdisk=y
-CONFIG_PACKAGE_exfat-fsck=y
-CONFIG_PACKAGE_exfat-mkfs=y
+#======================= 五、存储与分区工具 =======================
+#★同一条理由：M2 没有外接盘位，分区 / 格式化 / 挂载这类工具全部不装。
+#  京东云亚瑟要接 U 盘和移动硬盘，这些都在它自己那两份配置里（=y）。
+#  恢复：把下面这些行取消注释（同样先确认 GENERAL.txt 里没有同名 =y）。
+#CONFIG_PACKAGE_block-mount=y
+#CONFIG_PACKAGE_e2fsprogs=y
+#CONFIG_PACKAGE_f2fs-tools=y
+#CONFIG_PACKAGE_parted=y
+#CONFIG_PACKAGE_blkid=y
+#CONFIG_PACKAGE_lsblk=y
+#CONFIG_PACKAGE_fdisk=y
+#CONFIG_PACKAGE_sfdisk=y
+#CONFIG_PACKAGE_exfat-fsck=y
+#CONFIG_PACKAGE_exfat-mkfs=y
+#CONFIG_PACKAGE_automount=y
+#nand-utils 保留：M2 本身就是 NAND，nanddump / flash_erase 这类工具对它是正经有用的。
 CONFIG_PACKAGE_nand-utils=y
 CONFIG_PACKAGE_autocore=y
-CONFIG_PACKAGE_automount=y
 #usbmuxd / libimobiledevice（iPhone USB 共享）/ usbutils（lsusb）不装：M2 没有 USB 口。
 #gdisk/cgdisk/sgdisk（GPT 分区）、mmc-utils、nvme-cli/smartmontools 不装：
 #M2 是 NAND（无 eMMC/NVMe），这些工具用不上。
