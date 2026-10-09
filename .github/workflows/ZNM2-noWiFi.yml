@@ -12,15 +12,21 @@ on:
   workflow_dispatch:
     inputs:
       SOURCE:
-        description: '选择源码线：一次运行只编译这一个源码线的固件。两条线都要就手动再跑一次。'
-        default: 'OWrt'
+        description: '选择源码线：一次运行只出这一条线的固件，要几条就手动跑几次。'
+        default: 'OWrt-PPE'
         required: true
         type: choice
         options:
-          #OWrt   = VIKINGYFY/immortalwrt 分支 main       （内核 6.18，主机名 OWrt   / 192.168.10.1）
-          #LibWrt = LiBwrt/LibWrt        分支 25.12-nss  （内核 6.12，主机名 LibWrt / 192.168.20.1）
-          #分支 / 仓库 / 主机名 / IP 全部由这个选项自动带出，不需要再手填
-          - OWrt
+          #OWrt-NSS = VIKINGYFY/immortalwrt @ main       —— 内核 6.18，带 WiFi + 无 WiFi，NSS 加速
+          #OWrt-PPE = VIKINGYFY/immortalwrt @ owrt      —— 内核 6.18，【不支持 WiFi】，PPE 加速
+          #LibWrt   = LiBwrt/LibWrt        @ 25.12-nss  —— 内核 6.12，NSS 加速 + WiFi 卸载
+          #仓库 / 分支 / 主机名 / IP 全由这一个选项带出，没有第二处要填。
+          #▲为什么分支不单独给输入框：GitHub 表单【不支持联动】，选了源码不会自动带出
+          #  对应分支；而空输入框会被浏览器 autofill 成旧值 main —— 结果就是
+          #  「选了 PPE 线却拉到 main 分支」。合并成一个下拉后这个坑不存在了。
+          #▲本条是无 WiFi 配置，默认走 owrt（PPE）；想在这台机器上要 NSS 就选 OWrt-NSS。
+          - OWrt-PPE
+          - OWrt-NSS
           - LibWrt
       PACKAGE:
         description: '手动调整插件包，多个请用\n符号隔开。'
@@ -47,10 +53,10 @@ jobs:
       WRT_CONFIG: ZNM2-noWiFi
       #默认主题
       WRT_THEME: argon
-      #默认主机名：直接用源码线名（OWrt / LibWrt）
-      WRT_NAME: ${{inputs.SOURCE}}
+      #默认主机名：OWrt-NSS / OWrt-PPE 都归到 OWrt，LibWrt 归 LibWrt
+      WRT_NAME: ${{inputs.SOURCE == 'LibWrt' && 'LibWrt' || 'OWrt'}}
       #默认WIFI名称（无 WiFi 版用不到，WRT-CORE 里该字段必填所以照样传）
-      WRT_SSID: ${{inputs.SOURCE}}
+      WRT_SSID: ${{inputs.SOURCE == 'LibWrt' && 'LibWrt' || 'OWrt'}}
       #默认WIFI密码
       WRT_WORD: 12345678
       #默认地址：OWrt 线 10.x、LibWrt 线 20.x，两条线的固件在同一网络里不会撞 IP
@@ -59,8 +65,8 @@ jobs:
       WRT_PW: 无
       #源码链接
       WRT_REPO: ${{inputs.SOURCE == 'LibWrt' && 'https://github.com/LiBwrt/LibWrt.git' || 'https://github.com/VIKINGYFY/immortalwrt.git'}}
-      #源码分支
-      WRT_BRANCH: ${{inputs.SOURCE == 'LibWrt' && '25.12-nss' || 'main'}}
+      #源码分支：LibWrt→25.12-nss；OWrt-PPE→owrt（PPE、无 WiFi）；其余→main（NSS）
+      WRT_BRANCH: ${{inputs.SOURCE == 'LibWrt' && '25.12-nss' || (inputs.SOURCE == 'OWrt-PPE' && 'owrt' || 'main')}}
       #源码名称
       WRT_SOURCE: ${{inputs.SOURCE == 'LibWrt' && 'LiBwrt/LibWrt' || 'VIKINGYFY/immortalwrt'}}
       #插件调整

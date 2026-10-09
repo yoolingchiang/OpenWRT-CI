@@ -285,20 +285,38 @@ jobs:
 
             find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
 
-            #=m 的包：bin/packages/ 下编出来的 apk 默认不会进 upload，等于白编。
-            #  这里挑出来一起发。只收 luci-* 与几个大件主程序，避免把上百个依赖 apk
-            #  全塞进 release（依赖可以刷完用 apk add 自己拉）。
-            #  注意：=m 的包不写进 manifest，所以 Release 正文的插件清单里看不到它们。
-            if [ -d ./bin/packages ]; then
-              mkdir -p ./upload/packages/
-              find ./bin/packages -type f -name "*.apk" \
-                \( -name "luci-app-*.apk" -o -name "luci-i18n-*.apk" -o -name "luci-theme-*.apk" \
-                   -o -name "luci-proto-*.apk" -o -name "luci-lib-*.apk" \
-                   -o -name "openlist2*.apk" -o -name "easytier*.apk" \
-                   -o -name "mihomo*.apk" -o -name "yq*.apk" -o -name "ruby*.apk" \) \
-                -exec cp -f {} ./upload/packages/ \; 2>/dev/null
-              echo "===== =m 编出的 apk ($(ls ./upload/packages/ 2>/dev/null | wc -l) 个) ====="
-              ls -lh ./upload/packages/ 2>/dev/null | head -40
+            #---- 可选安装包：只发「编出来了但没装进固件」的，并打成单个压缩包 ----
+            #为什么要做差集：=y 的包一样会在 bin/packages/ 下产出 .apk，但它们已经打进
+            #固件了，再发一份纯属重复 —— JDCloud-WiFi 那次 Release 81 个文件里 70 个是散
+            #装 apk，对着 manifest 一比对，69 个早就内置，真正有用的只有 5 个。
+            #判定依据：*.manifest 是固件实际装进去的包清单，拿它和 bin/packages 做差集，
+            #剩下的就是 =m（编成包但不进固件）、需要时自己 apk add 装的那些。
+            #注意：=m 的包不写进 manifest，所以 Release 正文的插件清单里看不到它们。
+            MANIFEST=$(find ./bin/targets/ -type f -name "*.manifest" | head -1)
+            if [ -d ./bin/packages ] && [ -n "$MANIFEST" ]; then
+              find ./bin/packages -type f \( -name "*.apk" -o -name "*.ipk" \) > /tmp/all-pkgs.txt
+              #manifest 每行是「包名 - 版本」，apk 文件名是「包名-版本.apk」，拼起来精确比对。
+              #▲不能用前缀匹配：manifest 里有个包就叫 luci，按前缀一对，所有 luci-* 都会被
+              #  误判成已内置，=m 的包反而一个都发不出来（实测踩过）。
+              awk '
+                NR==FNR { if (NF>=3) built[$1 "-" $3]=1; next }
+                {
+                  f=$0; sub(/^.*\//,"",f); sub(/\.(apk|ipk)$/,"",f)
+                  if (!(f in built)) print $0
+                }' "$MANIFEST" /tmp/all-pkgs.txt > /tmp/extra-pkgs.txt
+
+              EXTRA=$(wc -l < /tmp/extra-pkgs.txt)
+              echo "===== bin/packages 共 $(wc -l < /tmp/all-pkgs.txt) 个包，未打进固件的有 $EXTRA 个 ====="
+              if [ "$EXTRA" -gt 0 ]; then
+                mkdir -p ./upload/packages/
+                while IFS= read -r F; do cp -f "$F" ./upload/packages/; done < /tmp/extra-pkgs.txt
+                ls -1 ./upload/packages/
+                #打成一个包再发：散着几十上百个 apk 会把 Release 页面撑爆，也没法一眼看出
+                #该下哪个。命名跟 Release tag 对齐，解压后直接 apk add *.apk 即可。
+                tar -czf ./upload/Packages-extra-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".tar.gz \
+                  -C ./upload/packages .
+                rm -rf ./upload/packages
+              fi
             fi
 
             make clean -j$(nproc)
@@ -308,9 +326,8 @@ jobs:
         uses: softprops/action-gh-release@master
         with:
           tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_BRANCH}}-${{env.WRT_DATE}}
-          files: |
-            ./wrt/upload/*.*
-            ./wrt/upload/packages/*.apk
+          #散装 apk 已经在上一步打成 Packages-extra-*.tar.gz，这里一行就够
+          files: ./wrt/upload/*.*
           body: |
             这是个平台固件包，内含多个设备！
             请注意选择你需要的设备固件！
