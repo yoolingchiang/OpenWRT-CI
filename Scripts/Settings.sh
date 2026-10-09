@@ -150,7 +150,10 @@ echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 #======================= 最终裁决层（PRIVATE）=======================
 #★这是整条 .config 合并链上**最后一个**追加层，所以它说了算，谁也覆盖不了它：
 #    机型配置 → GENERAL.txt → Settings.sh 注入(luci/主题) → ath11k/NSS 档位裁定
-#    → 按配置 PRIVATE → 全局 PRIVATE → make defconfig
+#    → 全局 PRIVATE.txt → 按配置 PRIVATE-<配置>.txt → make defconfig
+#  ▲注意两级 PRIVATE 的先后：**通用在前、特定在后**（越具体越优先）。
+#    上面 PRIVATE_FILES 的追加顺序就是这个，别照抄某些上游写法把全局排在特定之后 ——
+#    那样「给某一台设备单独开的例外」会被统一设定闷掉，这一层就白设了。
 #  （make defconfig 之后还有一层依赖求解，它会补齐依赖、仲裁互斥，那是另一回事。）
 #用它来解决「GENERAL 是共用基座、不想为了一台设备就动它，但这台设备偏偏要例外」的问题：
 #  遇到 GENERAL 顶着某个值不放时，不必去改 GENERAL（改了会波及三份配置），

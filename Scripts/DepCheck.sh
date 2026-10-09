@@ -23,6 +23,12 @@ set +e
 
 PKGINFO="tmp/.packageinfo"
 CONFIG=".config"
+#忽略清单：Config/DepCheck-ignore.txt，每行一个「认了无害」的依赖名，命中就不报警。
+#用途与准入标准见那个文件头部的说明 —— 只收「名字对不上但编译验证过不会中断」的，
+#mwan3 那种会在 package/install 炸的不许放进来。
+#CI 里本脚本是在 ./wrt（源码根）下跑的，仓库根在 $GITHUB_WORKSPACE；本地调试时退回上一级。
+IGNORE_FILE="${GITHUB_WORKSPACE:-..}/Config/DepCheck-ignore.txt"
+[ -f "$IGNORE_FILE" ] || IGNORE_FILE=""
 
 if [ ! -f "$CONFIG" ]; then
 	echo "::warning::DepCheck: 当前目录没有 .config，跳过依赖预检"
@@ -63,7 +69,13 @@ if [ -f "$PKGINFO" ]; then
 			for (i=1; i<=n; i++) {
 				if (arr[i] == "") continue
 				v=arr[i]; sub(/=.*$/, "", v)
-				if (v != "") print v
+				if (v == "") continue
+				print v
+				#▲虚拟包：OpenWrt 的写法带 @ 前缀（uclient-fetch 的 PROVIDES:=@wget-any）。
+				#  而依赖方常写成 +wget-any（不带 @），两边对不上就会误报"不存在"。
+				#  所以 @name 额外登记一份 name。典型误报：apk-openssl -> wget-any
+				#  （apk 要调外部 wget 下载包，靠这个虚拟包找一个 wget 实现）。
+				if (v ~ /^@/) print substr(v, 2)
 			}
 		}
 	' "$PKGINFO" | sort -u > "$WORK/avail"
@@ -148,10 +160,15 @@ fi
 #	@TARGET_xxx       -> 丢弃（Kconfig 条件，不是包名）
 #	+PACKAGE_x:foo    -> foo（条件依赖，取冒号后面）
 #	+kmod-xxx         -> kmod-xxx
-awk -F'\t' -v avail="$WORK/avail" -v sel="$WORK/selected" '
+awk -F'\t' -v avail="$WORK/avail" -v sel="$WORK/selected" -v ign="$IGNORE_FILE" -v work="$WORK" '
 	BEGIN {
 		while ((getline l < avail) > 0) have[l]=1
 		while ((getline l < sel) > 0) want[l]=1
+		while (ign != "" && (getline l < ign) > 0) {
+			sub(/#.*/, "", l)
+			gsub(/^[ \t]+|[ \t]+$/, "", l)
+			if (l != "") ignore[l]=1
+		}
 		#基础库 / 工具链提供、树里没有同名包目录的（packageinfo 里一般都有，这里是兜底防误报）
 		split("libc libgcc libm librt libpthread libdl libstdcpp libatomic libxcrypt", b, " ")
 		for (i in b) have[b[i]]=1
@@ -174,12 +191,17 @@ awk -F'\t' -v avail="$WORK/avail" -v sel="$WORK/selected" '
 		#  必然查不到。CI 上三条源码线一共误报了 17 条这类，全是 NSS_DRV_*。
 		#  OpenWrt 包名一律小写（数字 / 连字符 / 点 / 加号），所以「全大写」判定足够可靠。
 		if (dep ~ /^[A-Z][A-Z0-9_]*$/) next
+		#忽略清单：命中的直接跳过，只计数，不算缺失
+		if (dep in ignore) { IGN++; next }
 		if (dep in have) next
 		print pkg "\t" dep
 	}
+	END { print IGN+0 > (work "/ignored") }
 ' "$WORK/deps_raw" | sort -u > "$WORK/missing"
 
 MISSING=$(wc -l < "$WORK/missing")
+IGNORED=$(cat "$WORK/ignored" 2>/dev/null)
+IGNORED=${IGNORED:-0}
 
 #---------- 5. 输出 ----------
 #说明：只告警不失败。缺失项会同时以 ::error:: 注解输出，GitHub 会把它们收集到
@@ -214,6 +236,9 @@ else
 		echo "::error::DepCheck: $p 依赖的 $d 在源码树中不存在，将在 package/install 阶段中断编译"
 	done
 fi
+if [ "$IGNORED" -gt 0 ]; then
+	echo "另有 $IGNORED 条命中忽略清单（Config/DepCheck-ignore.txt），已跳过不报警"
+fi
 echo "==============================================================="
 
 if [ -n "$GITHUB_STEP_SUMMARY" ]; then
@@ -233,6 +258,10 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
 			echo "| 包 | 缺失的依赖 |"
 			echo "|---|---|"
 			awk -F'\t' '{ a[$1] = a[$1] " `" $2 "`" } END { for (p in a) printf "| %s |%s |\n", p, a[p] }' "$WORK/missing" | sort
+		fi
+		if [ "$IGNORED" -gt 0 ]; then
+			echo ""
+			echo "- 另有 **$IGNORED** 条命中忽略清单（`Config/DepCheck-ignore.txt`），已跳过不报警"
 		fi
 	} >> "$GITHUB_STEP_SUMMARY"
 fi
