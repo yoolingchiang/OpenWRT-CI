@@ -127,36 +127,66 @@ CONFIG_KERNEL_ZRAM_DEF_COMP_LZ4=y
 #★ext4 / f2fs / vfat / exfat 也一并去掉：这四种是给「外接盘」准备的格式，
 #  而 **ZN-M2 没有 USB 口、也没有任何外接盘位**，系统本身就跑在 NAND（ubifs）上，
 #  装了只是白占内核体积和 NAND 空间。
-#  京东云亚瑟有 USB 口，这四种格式保留在它自己那两份配置里。
-#  恢复：把下面四行取消注释（先确认 GENERAL.txt 里没有同名 =y —— 有则以 GENERAL 为准）。
-#CONFIG_PACKAGE_kmod-fs-ext4=y
-#CONFIG_PACKAGE_kmod-fs-f2fs=y
-#CONFIG_PACKAGE_kmod-fs-vfat=y
-#CONFIG_PACKAGE_kmod-fs-exfat=y
+#  京东云亚瑟有 USB 口，这四种格式保留在它自己那两份配置里（=y）。
+#  恢复：把 =n 改回 =y（先确认 GENERAL.txt 里没有同名键 —— 有则以 GENERAL 为准）。
+CONFIG_PACKAGE_kmod-fs-ext4=n
+CONFIG_PACKAGE_kmod-fs-f2fs=n
+CONFIG_PACKAGE_kmod-fs-vfat=n
+CONFIG_PACKAGE_kmod-fs-exfat=n
 #---- USB：整组不装 ----
-#★兆能 ZN-M2 没有 USB 口，控制器 / 存储 / 网卡 / 工具全部不装 —— 装了也用不上，
-#  白占 NAND 空间与内核体积。
-#  京东云亚瑟有 USB 口，那份配置里保留了 usb3 / dwc3 / ehci / ohci / uhci / usb-storage*。
-#  ▲GENERAL.txt 里这些键也已下放到机型层（否则它后加载会把 USB 反向塞回 M2，
-#    这是踩过的坑）。要加回来先确认 GENERAL 里没有同名 =y。
-#  万一以后要在 M2 上用 USB（比如 USB 网卡做 WAN），按 USB-WAN.md 把驱动加回来。
+#============================================================================
+#▲▲为什么这里全部写 =n，而不是把行注释掉（踩过的坑，别改回去）
+#  target/linux/qualcommax/Makefile 的 DEFAULT_PACKAGES 自带一整套包：
+#    autocore automount cpufreq e2fsprogs f2fs-tools losetup luci uboot-envtools wpad-openssl
+#    kmod-fs-ext4 kmod-fs-f2fs kmod-usb3 kmod-usb-dwc3 kmod-usb-dwc3-qcom
+#    kmod-usb-serial-qualcomm ...
+#  在机型配置里把行「注释掉」= 这一行不存在 = 用 target 的默认值，包照样进固件。
+#  实证（26.10.09 两版 ZNM2 固件的 manifest 对比）：
+#    注释掉的 kmod-usb3 / kmod-fs-ext4 / automount / e2fsprogs … 一个都没少；
+#    而**不在** DEFAULT_PACKAGES 里的 blkid / fdisk / parted / exfat-fsck / exfat-mkfs /
+#    sfdisk 确实消失了（连带 libfdisk1 / libmount1 / libparted / musl-fts 也没了）。
+#  → 想真正去掉，唯一办法就是显式写 =n。
+#============================================================================
+#★兆能 ZN-M2 没有 USB 口，控制器 / 存储 / 网卡 / 工具全部不装。
+#  京东云亚瑟有 USB 口，这份清单在它那两份配置里是 =y。
+#  ▲GENERAL.txt 里这些键也已下放到机型层（否则它后加载会把 =n 反向塞回 =y，这是踩过的坑）。
+#  万一以后要在 M2 上用 USB（比如 USB 网卡做 WAN）：把 =n 改回 =y，并按 USB-WAN.md 加网卡驱动。
+CONFIG_PACKAGE_kmod-usb3=n
+CONFIG_PACKAGE_kmod-usb-core=n
+CONFIG_PACKAGE_kmod-usb-dwc3=n
+CONFIG_PACKAGE_kmod-usb-dwc3-qcom=n
+CONFIG_PACKAGE_kmod-usb-ehci=n
+CONFIG_PACKAGE_kmod-usb-ohci=n
+CONFIG_PACKAGE_kmod-usb-uhci=n
+CONFIG_PACKAGE_kmod-usb-serial-qualcomm=n
+CONFIG_PACKAGE_kmod-usb-storage=n
+CONFIG_PACKAGE_kmod-usb-storage-extras=n
+CONFIG_PACKAGE_kmod-usb-storage-uas=n
+CONFIG_PACKAGE_kmod-usb-audio=n
+CONFIG_PACKAGE_usb-modeswitch=n
+CONFIG_PACKAGE_usbmuxd=n
+CONFIG_PACKAGE_usbutils=n
 
 #======================= 五、存储与分区工具 =======================
 #★同一条理由：M2 没有外接盘位，分区 / 格式化 / 挂载这类工具全部不装。
 #  京东云亚瑟要接 U 盘和移动硬盘，这些都在它自己那两份配置里（=y）。
-#  恢复：把下面这些行取消注释（同样先确认 GENERAL.txt 里没有同名 =y）。
-#CONFIG_PACKAGE_block-mount=y
-#CONFIG_PACKAGE_e2fsprogs=y
-#CONFIG_PACKAGE_f2fs-tools=y
-#CONFIG_PACKAGE_parted=y
-#CONFIG_PACKAGE_blkid=y
-#CONFIG_PACKAGE_lsblk=y
-#CONFIG_PACKAGE_fdisk=y
-#CONFIG_PACKAGE_sfdisk=y
-#CONFIG_PACKAGE_exfat-fsck=y
-#CONFIG_PACKAGE_exfat-mkfs=y
-#CONFIG_PACKAGE_automount=y
+#  其中 automount / e2fsprogs / f2fs-tools / block-mount 也在 DEFAULT_PACKAGES 里，
+#  所以同样必须显式 =n（理由见上面 USB 段那条长注释）。
+CONFIG_PACKAGE_block-mount=n
+CONFIG_PACKAGE_e2fsprogs=n
+CONFIG_PACKAGE_f2fs-tools=n
+CONFIG_PACKAGE_parted=n
+CONFIG_PACKAGE_blkid=n
+CONFIG_PACKAGE_lsblk=n
+CONFIG_PACKAGE_fdisk=n
+CONFIG_PACKAGE_sfdisk=n
+CONFIG_PACKAGE_exfat-fsck=n
+CONFIG_PACKAGE_exfat-mkfs=n
+CONFIG_PACKAGE_automount=n
 #nand-utils 保留：M2 本身就是 NAND，nanddump / flash_erase 这类工具对它是正经有用的。
+#autocore 保留：虽然也在 DEFAULT_PACKAGES 里，但它是 IPQ 平台的硬件信息 / 频率支持，有用。
+#（manifest 里还出现过 kmod-fs-ntfs3 / ntfs3-mount，不在上面这份 DEFAULT_PACKAGES 列表里，
+#  来源待查，暂时不动 —— 它是 NTFS 支持，同样属于"没外接盘就用不上"的一类。）
 CONFIG_PACKAGE_nand-utils=y
 CONFIG_PACKAGE_autocore=y
 #usbmuxd / libimobiledevice（iPhone USB 共享）/ usbutils（lsusb）不装：M2 没有 USB 口。
