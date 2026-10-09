@@ -52,7 +52,20 @@ SELECTED=$(wc -l < "$WORK/selected")
 if [ -f "$PKGINFO" ]; then
 	awk '
 		/^Package: /  { print $2 }
-		/^Provides: / { for (i=2; i<=NF; i++) { gsub(/,/, "", $i); if ($i != "") print $i } }
+		#▲Provides 的两种坑，原写法都会漏：
+		#  1) "Provides: wget-any=2024.10" 带版本号 —— 不去 =version 就永远匹配不上
+		#     "wget-any"，明明 uclient-fetch 提供了它，还是报缺失（CI 上实测误报）。
+		#  2) "Provides: a,b" 逗号分隔多个 —— 原来只删逗号不切分，"a,b" 被粘成 "ab"。
+		/^Provides: / {
+			sub(/^Provides: /, "")
+			gsub(/,/, " ")
+			n=split($0, arr, /[[:space:]]+/)
+			for (i=1; i<=n; i++) {
+				if (arr[i] == "") continue
+				v=arr[i]; sub(/=.*$/, "", v)
+				if (v != "") print v
+			}
+		}
 	' "$PKGINFO" | sort -u > "$WORK/avail"
 	AVAIL_SRC="$PKGINFO"
 else
@@ -155,6 +168,12 @@ awk -F'\t' -v avail="$WORK/avail" -v sel="$WORK/selected" '
 		if (dep == "" || dep == pkg) next
 		if (dep ~ /^@/) next                 #Kconfig 条件，不是包名
 		if (dep ~ /^PACKAGE_/) next          #条件依赖前缀
+		#▲Kconfig 配置符号：全大写 + 下划线（NSS_DRV_IPV6_ENABLE / NSS_DRV_WIFIOFFLOAD_ENABLE
+		#  之类）。.packageinfo 里 "Depends: +NSS_DRV_IPV6_ENABLE" 的含义是「依赖这个配置开关
+		#  被打开」，由 Kconfig 的 depends on 处理，**不由包管理器提供** —— 拿它去比对包名
+		#  必然查不到。CI 上三条源码线一共误报了 17 条这类，全是 NSS_DRV_*。
+		#  OpenWrt 包名一律小写（数字 / 连字符 / 点 / 加号），所以「全大写」判定足够可靠。
+		if (dep ~ /^[A-Z][A-Z0-9_]*$/) next
 		if (dep in have) next
 		print pkg "\t" dep
 	}
