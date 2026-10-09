@@ -135,7 +135,11 @@ fi
 echo "CONFIG_PACKAGE_luci=y" >> ./.config
 echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
-echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
+#luci-app-<主题>-config：主题的外观自定义页（换登录壁纸 / 头像 / 配色）。
+#  2026-10-09 停用：主路由用不上，而且它会往固件里塞图片素材，128MB NAND 的 M2 省不起。
+#  主题本体照常生效，只是少一个「外观设置」菜单项。
+#  恢复：把下面这行取消注释。
+#echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 
 #设备专属覆盖：本仓库已不使用 —— 配置改为「一台设备/一种形态一份自包含清单」
 #（Config/JDCloud-WiFi.txt、JDCloud-noWiFi.txt、ZNM2-noWiFi.txt）。
